@@ -1,12 +1,9 @@
-import { useState } from 'react';
-import type { Database } from '../types/supabase';
-
-type Person = Database['public']['Tables']['people']['Row'];
-type NewPerson = Omit<Person, 'id' | 'user_id' | 'created_at'>;
+import React, { useState } from 'react';
+import { X } from 'lucide-react';
 
 interface AddPersonModalProps {
   onClose: () => void;
-  onAdd: (person: NewPerson) => void;
+  onAdd: (person: { name: string; relationship: string; budget: number }) => void;
 }
 
 export function AddPersonModal({ onClose, onAdd }: AddPersonModalProps) {
@@ -27,7 +24,12 @@ export function AddPersonModal({ onClose, onAdd }: AddPersonModalProps) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Add New Person</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Add New Person</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+            <X size={20} />
+          </button>
+        </div>
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
@@ -38,7 +40,7 @@ export function AddPersonModal({ onClose, onAdd }: AddPersonModalProps) {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white px-3 py-2 border"
                 required
               />
             </div>
@@ -50,7 +52,7 @@ export function AddPersonModal({ onClose, onAdd }: AddPersonModalProps) {
                 type="text"
                 value={relationship}
                 onChange={(e) => setRelationship(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white px-3 py-2 border"
                 required
               />
             </div>
@@ -62,8 +64,10 @@ export function AddPersonModal({ onClose, onAdd }: AddPersonModalProps) {
                 type="number"
                 value={budget}
                 onChange={(e) => setBudget(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white px-3 py-2 border"
                 required
+                min="0"
+                step="0.01"
               />
             </div>
           </div>

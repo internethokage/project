@@ -18,8 +18,8 @@ export interface Database {
           user_id: string
           created_at: string
         }
-        Insert: Omit<Occasion, 'id' | 'created_at'>
-        Update: Partial<Occasion>
+        Insert: Omit<Database['public']['Tables']['occasions']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['occasions']['Row']>
       }
       people: {
         Row: {
@@ -30,8 +30,8 @@ export interface Database {
           user_id: string
           created_at: string
         }
-        Insert: Omit<Person, 'id' | 'created_at'>
-        Update: Partial<Person>
+        Insert: Omit<Database['public']['Tables']['people']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['people']['Row']>
       }
       people_occasions: {
         Row: {
@@ -61,8 +61,8 @@ export interface Database {
           date_given: string | null
           user_id: string
         }
-        Insert: Omit<Gift, 'id' | 'created_at'>
-        Update: Partial<Gift>
+        Insert: Omit<Database['public']['Tables']['gifts']['Row'], 'id'>
+        Update: Partial<Database['public']['Tables']['gifts']['Row']>
       }
     }
   }
@@ -70,4 +70,4 @@ export interface Database {
 
 export type Occasion = Database['public']['Tables']['occasions']['Row']
 export type Person = Database['public']['Tables']['people']['Row']
-export type Gift = Database['public']['Tables']['gifts']['Row'] 
+export type Gift = Database['public']['Tables']['gifts']['Row']

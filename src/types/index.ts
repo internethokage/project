@@ -1,32 +1,27 @@
-export interface Occasion {
-  id: string;
-  type: string;
-  date: Date;
-  budget: number;
-  user_id: string;
-  created_at: string;
-}
+export type { Database, Occasion, Person, Gift } from './supabase';
 
-export interface Person {
+export type GiftStatus = 'idea' | 'purchased' | 'given';
+
+export type LLMProvider = 'anthropic' | 'openai' | 'custom';
+
+export interface LLMConfig {
   id: string;
+  provider: LLMProvider;
   name: string;
-  relationship: string;
-  budget: number;
-  user_id: string;
-  created_at: string;
-  occasions: Occasion[];
+  apiKey: string;
+  baseUrl: string;
+  model: string;
+  isActive: boolean;
 }
 
-export interface GiftIdea {
-  id: string;
-  personId: string;
+export interface LLMMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export interface GiftSuggestion {
   title: string;
-  price: number;
-  url?: string | null;
-  notes?: string | null;
-  status: 'idea' | 'purchased' | 'given';
-  dateAdded: Date;
-  datePurchased?: Date;
-  dateGiven?: Date;
-  user_id: string;
+  description: string;
+  estimatedPrice: number;
+  reason: string;
 }

@@ -1,0 +1,185 @@
+import type { LLMConfig, LLMMessage, GiftSuggestion } from '../types';
+
+const STORAGE_KEY = 'giftable-llm-configs';
+
+export const llmService = {
+  getConfigs(): LLMConfig[] {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  saveConfigs(configs: LLMConfig[]) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(configs));
+  },
+
+  addConfig(config: Omit<LLMConfig, 'id'>): LLMConfig {
+    const configs = this.getConfigs();
+    const newConfig: LLMConfig = {
+      ...config,
+      id: crypto.randomUUID(),
+    };
+    // If this is the first config or marked active, deactivate others
+    if (newConfig.isActive || configs.length === 0) {
+      configs.forEach(c => c.isActive = false);
+      newConfig.isActive = true;
+    }
+    configs.push(newConfig);
+    this.saveConfigs(configs);
+    return newConfig;
+  },
+
+  updateConfig(id: string, updates: Partial<LLMConfig>): LLMConfig | null {
+    const configs = this.getConfigs();
+    const index = configs.findIndex(c => c.id === id);
+    if (index === -1) return null;
+
+    if (updates.isActive) {
+      configs.forEach(c => c.isActive = false);
+    }
+    configs[index] = { ...configs[index], ...updates };
+    this.saveConfigs(configs);
+    return configs[index];
+  },
+
+  deleteConfig(id: string) {
+    const configs = this.getConfigs().filter(c => c.id !== id);
+    this.saveConfigs(configs);
+  },
+
+  getActiveConfig(): LLMConfig | null {
+    return this.getConfigs().find(c => c.isActive) ?? null;
+  },
+
+  async sendMessage(config: LLMConfig, messages: LLMMessage[]): Promise<string> {
+    const { provider, apiKey, baseUrl, model } = config;
+
+    let url: string;
+    let headers: Record<string, string>;
+    let body: unknown;
+
+    switch (provider) {
+      case 'anthropic': {
+        url = baseUrl || 'https://api.anthropic.com/v1/messages';
+        headers = {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        };
+        const systemMsg = messages.find(m => m.role === 'system');
+        const nonSystemMsgs = messages.filter(m => m.role !== 'system');
+        body = {
+          model: model || 'claude-sonnet-4-20250514',
+          max_tokens: 1024,
+          ...(systemMsg ? { system: systemMsg.content } : {}),
+          messages: nonSystemMsgs.map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+        };
+        break;
+      }
+      case 'openai': {
+        url = baseUrl || 'https://api.openai.com/v1/chat/completions';
+        headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        };
+        body = {
+          model: model || 'gpt-4o-mini',
+          messages: messages.map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+          max_tokens: 1024,
+        };
+        break;
+      }
+      case 'custom': {
+        if (!baseUrl) throw new Error('Custom provider requires a base URL');
+        url = baseUrl;
+        headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        };
+        // OpenAI-compatible format (most local LLMs use this)
+        body = {
+          model: model || 'default',
+          messages: messages.map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+          max_tokens: 1024,
+        };
+        break;
+      }
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`LLM API error (${response.status}): ${errorText}`);
+    }
+
+    const data = await response.json();
+
+    if (provider === 'anthropic') {
+      return data.content?.[0]?.text ?? '';
+    }
+    // OpenAI and custom (OpenAI-compatible) format
+    return data.choices?.[0]?.message?.content ?? '';
+  },
+
+  async getGiftSuggestions(
+    config: LLMConfig,
+    personName: string,
+    relationship: string,
+    budget: number,
+    existingGifts: string[]
+  ): Promise<GiftSuggestion[]> {
+    const existingGiftsText = existingGifts.length > 0
+      ? `They already have these gift ideas: ${existingGifts.join(', ')}.`
+      : 'No gift ideas yet.';
+
+    const messages: LLMMessage[] = [
+      {
+        role: 'system',
+        content: `You are a helpful gift suggestion assistant for an app called Giftable. You suggest thoughtful, creative gift ideas. Always respond with valid JSON only, no markdown formatting.`,
+      },
+      {
+        role: 'user',
+        content: `Suggest 4 gift ideas for ${personName} (my ${relationship}). Budget remaining: $${budget}. ${existingGiftsText}
+
+Respond with a JSON array of objects with these fields:
+- title: gift name (string)
+- description: brief description (string)
+- estimatedPrice: estimated cost in dollars (number)
+- reason: why this is a good gift for them (string)
+
+Keep prices within the budget. Be creative and thoughtful. Return ONLY the JSON array, no other text.`,
+      },
+    ];
+
+    const responseText = await this.sendMessage(config, messages);
+
+    try {
+      // Try to extract JSON from the response
+      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) throw new Error('No JSON array found in response');
+      const suggestions: GiftSuggestion[] = JSON.parse(jsonMatch[0]);
+      return suggestions.filter(s => s.title && typeof s.estimatedPrice === 'number');
+    } catch (parseError) {
+      console.error('Failed to parse LLM response:', responseText);
+      throw new Error('Failed to parse gift suggestions from AI response');
+    }
+  },
+};

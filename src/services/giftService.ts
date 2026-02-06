@@ -1,146 +1,94 @@
 import { supabase } from '../lib/supabase';
-import type { Person, GiftIdea, Occasion } from '../types';
-import type { Database } from '../types/supabase';
-
-type DbOccasion = Database['public']['Tables']['occasions']['Row'];
-type DbPerson = Database['public']['Tables']['people']['Row'];
-type DbGift = Database['public']['Tables']['gifts']['Row'];
+import type { Occasion, Person, Gift, GiftStatus } from '../types';
 
 export const giftService = {
   async getOccasions(userId: string): Promise<Occasion[]> {
-    console.log('Fetching occasions for user:', userId);
     const { data, error } = await supabase
       .from('occasions')
       .select('*')
       .eq('user_id', userId)
       .order('date', { ascending: true });
 
-    if (error) {
-      console.error('Error fetching occasions:', error);
-      throw error;
-    }
-
-    console.log('Fetched occasions:', data);
-    return data.map(occasion => ({
-      ...occasion,
-      date: new Date(occasion.date)
-    }));
+    if (error) throw error;
+    return data;
   },
 
   async addOccasion(
-    occasion: Omit<Occasion, 'id' | 'user_id' | 'created_at'>,
+    occasion: { type: string; date: string; budget: number },
     userId: string
   ): Promise<Occasion> {
-    console.log('Adding occasion:', { occasion, userId });
-    
-    const insertData = {
-      type: occasion.type,
-      date: occasion.date.toISOString(),
-      budget: occasion.budget,
-      user_id: userId
-    };
-    
-    console.log('Insert data:', insertData);
-
     const { data, error } = await supabase
       .from('occasions')
-      .insert([insertData])
+      .insert([{ ...occasion, user_id: userId }])
       .select()
       .single();
 
-    if (error) {
-      console.error('Error adding occasion:', error);
-      throw error;
-    }
+    if (error) throw error;
+    return data;
+  },
 
-    console.log('Added occasion:', data);
-    return {
-      ...data,
-      date: new Date(data.date)
-    };
+  async deleteOccasion(occasionId: string, userId: string) {
+    const { error } = await supabase
+      .from('occasions')
+      .delete()
+      .eq('id', occasionId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
   },
 
   async getPeople(userId: string): Promise<Person[]> {
     const { data, error } = await supabase
       .from('people')
-      .select(`
-        *,
-        people_occasions!inner (
-          occasions (*)
-        )
-      `)
+      .select('*')
       .eq('user_id', userId);
 
     if (error) throw error;
-    return data.map(person => ({
-      ...person,
-      occasions: person.people_occasions.map((po: any) => ({
-        ...po.occasions,
-        date: new Date(po.occasions.date)
-      }))
-    }));
+    return data;
   },
 
-  async addPerson(person: Omit<Person, 'id'>, userId: string) {
+  async addPerson(
+    person: { name: string; relationship: string; budget: number },
+    userId: string
+  ): Promise<Person> {
     const { data, error } = await supabase
       .from('people')
-      .insert([{
-        name: person.name,
-        relationship: person.relationship,
-        budget: person.budget,
-        user_id: userId
-      }])
+      .insert([{ ...person, user_id: userId }])
       .select()
       .single();
 
     if (error) throw error;
-
-    // Add occasion associations
-    if (person.occasions.length > 0) {
-      const { error: linkError } = await supabase
-        .from('people_occasions')
-        .insert(
-          person.occasions.map(occasion => ({
-            person_id: data.id,
-            occasion_id: occasion.id
-          }))
-        );
-
-      if (linkError) throw linkError;
-    }
-
-    return {
-      ...data,
-      occasions: person.occasions
-    };
+    return data;
   },
 
-  async getGifts(userId: string): Promise<GiftIdea[]> {
+  async deletePerson(personId: string, userId: string) {
+    const { error } = await supabase
+      .from('people')
+      .delete()
+      .eq('id', personId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
+  },
+
+  async getGifts(userId: string): Promise<Gift[]> {
     const { data, error } = await supabase
       .from('gifts')
       .select('*')
       .eq('user_id', userId);
 
     if (error) throw error;
-    return data.map(gift => ({
-      ...gift,
-      personId: gift.person_id,
-      dateAdded: new Date(gift.date_added),
-      datePurchased: gift.date_purchased ? new Date(gift.date_purchased) : undefined,
-      dateGiven: gift.date_given ? new Date(gift.date_given) : undefined
-    }));
+    return data;
   },
 
-  async addGift(gift: Omit<GiftIdea, 'id' | 'dateAdded'>, userId: string) {
+  async addGift(
+    gift: { person_id: string; title: string; price: number; url?: string | null; notes?: string | null; status: GiftStatus },
+    userId: string
+  ): Promise<Gift> {
     const { data, error } = await supabase
       .from('gifts')
       .insert([{
-        person_id: gift.personId,
-        title: gift.title,
-        price: gift.price,
-        url: gift.url,
-        notes: gift.notes,
-        status: gift.status,
+        ...gift,
         user_id: userId,
         date_added: new Date().toISOString()
       }])
@@ -148,18 +96,11 @@ export const giftService = {
       .single();
 
     if (error) throw error;
-    return {
-      ...data,
-      dateAdded: new Date(data.date_added),
-      datePurchased: data.date_purchased ? new Date(data.date_purchased) : undefined,
-      dateGiven: data.date_given ? new Date(data.date_given) : undefined
-    };
+    return data;
   },
 
-  async updateGiftStatus(giftId: string, status: GiftIdea['status'], userId: string) {
-    const updates: any = {
-      status,
-    };
+  async updateGiftStatus(giftId: string, status: GiftStatus, userId: string): Promise<Gift> {
+    const updates: Record<string, string> = { status };
 
     if (status === 'purchased') {
       updates.date_purchased = new Date().toISOString();
@@ -177,5 +118,15 @@ export const giftService = {
 
     if (error) throw error;
     return data;
+  },
+
+  async removeGift(giftId: string, userId: string) {
+    const { error } = await supabase
+      .from('gifts')
+      .delete()
+      .eq('id', giftId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
   }
-}; 
+};
