@@ -1,17 +1,17 @@
 import React from 'react';
-import { Gift, Calendar, DollarSign, Trash2 } from 'lucide-react';
-import type { Person, GiftIdea } from '../types';
+import { Gift as GiftIcon, DollarSign, Trash2 } from 'lucide-react';
+import type { Person, Gift } from '../types';
 import { calculateSpentAmount } from '../utils/calculations';
 
 interface PersonCardProps {
   person: Person;
-  gifts: GiftIdea[];
+  gifts: Gift[];
   onSelect: (person: Person) => void;
   onRemove: (personId: string) => void;
 }
 
 export function PersonCard({ person, gifts, onSelect, onRemove }: PersonCardProps) {
-  const personGifts = gifts.filter(gift => gift.personId === person.id);
+  const personGifts = gifts.filter(gift => gift.person_id === person.id);
   const spentAmount = calculateSpentAmount(personGifts);
   const giftIdeasCount = personGifts.length;
 
@@ -23,7 +23,7 @@ export function PersonCard({ person, gifts, onSelect, onRemove }: PersonCardProp
   };
 
   return (
-    <div 
+    <div
       onClick={() => onSelect(person)}
       className="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100 dark:border-gray-700"
     >
@@ -40,15 +40,11 @@ export function PersonCard({ person, gifts, onSelect, onRemove }: PersonCardProp
           </button>
         </div>
       </div>
-      
+
       <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-300">
         <div className="flex items-center gap-1">
-          <Gift size={16} />
+          <GiftIcon size={16} />
           <span>{giftIdeasCount} ideas</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Calendar size={16} />
-          <span>{person.occasions.length} occasions</span>
         </div>
         <div className="flex items-center gap-1">
           <DollarSign size={16} />

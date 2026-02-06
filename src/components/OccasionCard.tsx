@@ -1,10 +1,6 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Calendar, DollarSign } from 'lucide-react';
-import type { Database } from '../types/supabase';
-
-type Person = Database['public']['Tables']['people']['Row'];
-type Occasion = Database['public']['Tables']['occasions']['Row'];
-type Gift = Database['public']['Tables']['gifts']['Row'];
+import type { Person, Gift, Occasion } from '../types';
 
 interface OccasionCardProps {
   occasion: Occasion;
@@ -24,12 +20,10 @@ export function OccasionCard({
   const [isConfirming, setIsConfirming] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Filter gifts for this occasion's people
-  const occasionGifts = gifts.filter(gift => 
+  const occasionGifts = gifts.filter(gift =>
     people.some(person => person.id === gift.person_id)
   );
 
-  // Calculate total spent
   const totalSpent = occasionGifts
     .filter(gift => gift.status === 'purchased' || gift.status === 'given')
     .reduce((sum, gift) => sum + gift.price, 0);
@@ -45,8 +39,6 @@ export function OccasionCard({
 
   const handleConfirmDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!onRemove) return;
-    
     try {
       setIsDeleting(true);
       await onRemove(occasion.id);
@@ -64,7 +56,7 @@ export function OccasionCard({
   };
 
   return (
-    <div 
+    <div
       onClick={() => onSelect(occasion)}
       className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
     >
@@ -116,4 +108,4 @@ export function OccasionCard({
       </div>
     </div>
   );
-} 
+}

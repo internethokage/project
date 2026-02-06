@@ -1,10 +1,10 @@
 import React from 'react';
-import { Package, Gift as GiftIcon, ExternalLink, DollarSign, Trash2 } from 'lucide-react';
-import type { GiftIdea } from '../types';
+import { Package, Gift as GiftIcon, ExternalLink, Trash2 } from 'lucide-react';
+import type { Gift, GiftStatus } from '../types';
 
 interface GiftListProps {
-  gifts: GiftIdea[];
-  onUpdateStatus: (giftId: string, status: GiftIdea['status']) => void;
+  gifts: Gift[];
+  onUpdateStatus: (giftId: string, status: GiftStatus) => void;
   onRemove: (giftId: string) => void;
 }
 
@@ -30,7 +30,7 @@ export function GiftList({ gifts, onUpdateStatus, onRemove }: GiftListProps) {
                   href={gift.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800"
+                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
                   title="View product page"
                   aria-label="Open product page in new tab"
                 >
@@ -41,8 +41,8 @@ export function GiftList({ gifts, onUpdateStatus, onRemove }: GiftListProps) {
                 onClick={() => onUpdateStatus(gift.id, 'purchased')}
                 className={`p-2 rounded-full ${
                   gift.status === 'purchased' || gift.status === 'given'
-                    ? 'bg-green-100 text-green-600'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
                 title={gift.status === 'purchased' || gift.status === 'given' ? 'Already purchased' : 'Mark as purchased'}
                 aria-label={gift.status === 'purchased' || gift.status === 'given' ? 'Gift is purchased' : 'Mark gift as purchased'}

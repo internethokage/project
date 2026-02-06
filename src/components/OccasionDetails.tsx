@@ -1,18 +1,14 @@
 import { useState } from 'react';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { AddPersonModal } from './AddPersonModal';
-import type { Database } from '../types/supabase';
-
-type Person = Database['public']['Tables']['people']['Row'];
-type Occasion = Database['public']['Tables']['occasions']['Row'];
-type Gift = Database['public']['Tables']['gifts']['Row'];
+import type { Person, Gift, Occasion } from '../types';
 
 interface OccasionDetailsProps {
   occasion: Occasion;
   people: Person[];
   gifts: Gift[];
   onBack: () => void;
-  onAddPerson: (person: Omit<Person, 'id' | 'user_id' | 'created_at'>) => void;
+  onAddPerson: (person: { name: string; relationship: string; budget: number }) => void;
   onSelectPerson: (person: Person) => void;
   onRemovePerson: (id: string) => void;
 }
@@ -28,12 +24,11 @@ export function OccasionDetails({
 }: OccasionDetailsProps) {
   const [showAddPersonModal, setShowAddPersonModal] = useState(false);
 
-  // Filter people who have gifts for this occasion
-  const occasionPeople = people.filter(person => 
+  const occasionPeople = people.filter(person =>
     gifts.some(gift => gift.person_id === person.id)
   );
 
-  const handleAddPerson = async (person: Omit<Person, 'id' | 'user_id' | 'created_at'>) => {
+  const handleAddPerson = async (person: { name: string; relationship: string; budget: number }) => {
     try {
       await onAddPerson(person);
       setShowAddPersonModal(false);
@@ -108,4 +103,4 @@ export function OccasionDetails({
       )}
     </div>
   );
-} 
+}
