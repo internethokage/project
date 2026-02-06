@@ -1,132 +1,44 @@
-import { supabase } from '../lib/supabase';
+import { api } from '../lib/api';
 import type { Occasion, Person, Gift, GiftStatus } from '../types';
 
 export const giftService = {
-  async getOccasions(userId: string): Promise<Occasion[]> {
-    const { data, error } = await supabase
-      .from('occasions')
-      .select('*')
-      .eq('user_id', userId)
-      .order('date', { ascending: true });
-
-    if (error) throw error;
-    return data;
+  async getOccasions(): Promise<Occasion[]> {
+    return api.get<Occasion[]>('/api/occasions');
   },
 
-  async addOccasion(
-    occasion: { type: string; date: string; budget: number },
-    userId: string
-  ): Promise<Occasion> {
-    const { data, error } = await supabase
-      .from('occasions')
-      .insert([{ ...occasion, user_id: userId }])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+  async addOccasion(occasion: { type: string; date: string; budget: number }): Promise<Occasion> {
+    return api.post<Occasion>('/api/occasions', occasion);
   },
 
-  async deleteOccasion(occasionId: string, userId: string) {
-    const { error } = await supabase
-      .from('occasions')
-      .delete()
-      .eq('id', occasionId)
-      .eq('user_id', userId);
-
-    if (error) throw error;
+  async deleteOccasion(occasionId: string): Promise<void> {
+    await api.delete(`/api/occasions/${occasionId}`);
   },
 
-  async getPeople(userId: string): Promise<Person[]> {
-    const { data, error } = await supabase
-      .from('people')
-      .select('*')
-      .eq('user_id', userId);
-
-    if (error) throw error;
-    return data;
+  async getPeople(): Promise<Person[]> {
+    return api.get<Person[]>('/api/people');
   },
 
-  async addPerson(
-    person: { name: string; relationship: string; budget: number },
-    userId: string
-  ): Promise<Person> {
-    const { data, error } = await supabase
-      .from('people')
-      .insert([{ ...person, user_id: userId }])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+  async addPerson(person: { name: string; relationship: string; budget: number }): Promise<Person> {
+    return api.post<Person>('/api/people', person);
   },
 
-  async deletePerson(personId: string, userId: string) {
-    const { error } = await supabase
-      .from('people')
-      .delete()
-      .eq('id', personId)
-      .eq('user_id', userId);
-
-    if (error) throw error;
+  async deletePerson(personId: string): Promise<void> {
+    await api.delete(`/api/people/${personId}`);
   },
 
-  async getGifts(userId: string): Promise<Gift[]> {
-    const { data, error } = await supabase
-      .from('gifts')
-      .select('*')
-      .eq('user_id', userId);
-
-    if (error) throw error;
-    return data;
+  async getGifts(): Promise<Gift[]> {
+    return api.get<Gift[]>('/api/gifts');
   },
 
-  async addGift(
-    gift: { person_id: string; title: string; price: number; url?: string | null; notes?: string | null; status: GiftStatus },
-    userId: string
-  ): Promise<Gift> {
-    const { data, error } = await supabase
-      .from('gifts')
-      .insert([{
-        ...gift,
-        user_id: userId,
-        date_added: new Date().toISOString()
-      }])
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+  async addGift(gift: { person_id: string; title: string; price: number; url?: string | null; notes?: string | null; status: GiftStatus }): Promise<Gift> {
+    return api.post<Gift>('/api/gifts', gift);
   },
 
-  async updateGiftStatus(giftId: string, status: GiftStatus, userId: string): Promise<Gift> {
-    const updates: Record<string, string> = { status };
-
-    if (status === 'purchased') {
-      updates.date_purchased = new Date().toISOString();
-    } else if (status === 'given') {
-      updates.date_given = new Date().toISOString();
-    }
-
-    const { data, error } = await supabase
-      .from('gifts')
-      .update(updates)
-      .eq('id', giftId)
-      .eq('user_id', userId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+  async updateGiftStatus(giftId: string, status: GiftStatus): Promise<Gift> {
+    return api.patch<Gift>(`/api/gifts/${giftId}/status`, { status });
   },
 
-  async removeGift(giftId: string, userId: string) {
-    const { error } = await supabase
-      .from('gifts')
-      .delete()
-      .eq('id', giftId)
-      .eq('user_id', userId);
-
-    if (error) throw error;
-  }
+  async removeGift(giftId: string): Promise<void> {
+    await api.delete(`/api/gifts/${giftId}`);
+  },
 };

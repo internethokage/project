@@ -13,12 +13,11 @@ import type { Person, Occasion } from './types';
 import shopping from '/shopping.png';
 import { Auth } from './components/Auth';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
-import { supabase } from './lib/supabase';
-import type { Session } from '@supabase/supabase-js';
+import { authApi, getToken, clearToken, getStoredUser, type AuthUser } from './lib/api';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AccountDeletion } from './components/AccountDeletion';
 
-function MainLayout() {
+function MainLayout({ onLogout }: { onLogout: () => void }) {
   const {
     people,
     gifts,
@@ -55,13 +54,14 @@ function MainLayout() {
   }, [isDarkMode]);
 
   useEffect(() => {
-    const getUserEmail = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email) {
-        setUserEmail(user.email);
-      }
-    };
-    getUserEmail();
+    const stored = getStoredUser();
+    if (stored?.email) {
+      setUserEmail(stored.email);
+    } else {
+      authApi.getUser().then(user => {
+        if (user?.email) setUserEmail(user.email);
+      });
+    }
   }, []);
 
   const handleLogoClick = () => {
@@ -75,8 +75,8 @@ function MainLayout() {
 
   const handleLogout = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      await authApi.logout();
+      onLogout();
       navigate('/auth');
     } catch (err) {
       console.error('Error logging out:', err);
@@ -306,23 +306,30 @@ function MainLayout() {
 }
 
 export function App() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const [authenticated, setAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setAuthLoading(false);
+    // Check if we have a valid token
+    const token = getToken();
+    if (!token) {
+      setAuthenticated(false);
+      return;
+    }
+
+    authApi.verify().then(({ valid }) => {
+      setAuthenticated(valid);
+      if (!valid) clearToken();
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
+    // Listen for forced logouts (401 from API)
+    const handleLogout = () => {
+      setAuthenticated(false);
+    };
+    window.addEventListener('auth:logout', handleLogout);
+    return () => window.removeEventListener('auth:logout', handleLogout);
   }, []);
 
-  if (authLoading) {
+  if (authenticated === null) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-gray-900 dark:text-white">Loading...</div>
@@ -335,12 +342,17 @@ export function App() {
       <Routes>
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/delete-account" element={<AccountDeletion />} />
-        <Route path="/auth" element={<Auth />} />
+        <Route
+          path="/auth"
+          element={
+            <Auth onAuthSuccess={() => setAuthenticated(true)} />
+          }
+        />
         <Route
           path="/*"
           element={
-            session ? (
-              <MainLayout />
+            authenticated ? (
+              <MainLayout onLogout={() => setAuthenticated(false)} />
             ) : (
               <Navigate to="/auth" replace />
             )
