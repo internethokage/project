@@ -22,7 +22,7 @@ export function GiftList({ gifts, onUpdateStatus, onRemove }: GiftListProps) {
           <div className="flex justify-between">
             <div>
               <h4 className="text-gray-900 dark:text-white font-medium">{gift.title}</h4>
-              <p className="text-gray-500 dark:text-gray-400">${gift.price}</p>
+              <p className="text-sky-700 dark:text-sky-300">${gift.price}</p>
             </div>
             <div className="flex gap-2">
               {gift.url && (

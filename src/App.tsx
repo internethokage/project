@@ -96,7 +96,7 @@ function MainLayout({ onLogout }: { onLogout: () => void }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-gray-900 dark:text-white">Loading...</div>
       </div>
     );
@@ -104,40 +104,40 @@ function MainLayout({ onLogout }: { onLogout: () => void }) {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-red-600 dark:text-red-400">{error}</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow-sm">
+    <div className="min-h-screen">
+      <header className="sticky top-0 z-20 border-b border-white/50 bg-white/35 backdrop-blur-xl dark:border-white/10 dark:bg-sky-950/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div
-              className="flex items-center gap-2 cursor-pointer"
+              className="flex items-center gap-3 cursor-pointer rounded-xl px-3 py-2 hover:bg-white/40 dark:hover:bg-sky-900/40"
               onClick={handleLogoClick}
             >
               <img src={shopping} alt="Gift" className="w-6 h-6" />
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Giftable</h1>
+              <h1 className="text-xl font-semibold text-sky-950 dark:text-sky-100">Giftable</h1>
             </div>
             <div className="relative" ref={profileMenuRef}>
               <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="flex items-center gap-2 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="flex items-center gap-2 p-2 rounded-full border border-white/60 bg-white/40 hover:bg-white/60 dark:border-white/15 dark:bg-sky-900/40"
               >
-                <User className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                <Menu className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                <User className="w-5 h-5 text-sky-800 dark:text-sky-200" />
+                <Menu className="w-5 h-5 text-sky-800 dark:text-sky-200" />
               </button>
 
               {showProfileMenu && (
-                <div className="absolute right-0 mt-2 w-64 rounded-md shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 z-50">
-                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
+                <div className="absolute right-0 mt-2 w-64 aero-panel p-1 z-50">
+                  <div className="p-4 border-b border-white/50 dark:border-white/10">
+                    <p className="text-sm font-medium text-sky-950 dark:text-sky-100">
                       Signed in as
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                    <p className="text-sm text-sky-700 dark:text-sky-300 truncate">
                       {userEmail}
                     </p>
                   </div>
@@ -147,14 +147,14 @@ function MainLayout({ onLogout }: { onLogout: () => void }) {
                         setShowSettingsPanel(true);
                         setShowProfileMenu(false);
                       }}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="flex items-center w-full rounded-lg px-4 py-2 text-sm text-sky-900 hover:bg-white/50 dark:text-sky-100 dark:hover:bg-sky-900/50"
                     >
                       <Settings className="h-4 w-4 mr-2" />
                       Settings
                     </button>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      className="flex items-center w-full rounded-lg px-4 py-2 text-sm text-sky-900 hover:bg-white/50 dark:text-sky-100 dark:hover:bg-sky-900/50"
                     >
                       <LogOut className="h-4 w-4 mr-2" />
                       Sign out
@@ -192,10 +192,10 @@ function MainLayout({ onLogout }: { onLogout: () => void }) {
             {/* Occasions Section */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">Occasions</h2>
+                <h2 className="text-2xl font-semibold text-sky-950 dark:text-sky-100">Occasions</h2>
                 <button
                   onClick={() => setShowAddOccasionModal(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="aero-button"
                 >
                   <Plus className="h-5 w-5 mr-2" />
                   Add Occasion
@@ -203,16 +203,16 @@ function MainLayout({ onLogout }: { onLogout: () => void }) {
               </div>
 
               {occasions.length === 0 ? (
-                <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="text-center py-12 aero-panel">
                   <Gift className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No occasions</h3>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  <h3 className="mt-2 text-sm font-medium text-sky-950 dark:text-sky-100">No occasions</h3>
+                  <p className="mt-1 text-sm text-sky-700 dark:text-sky-300">
                     Get started by adding an occasion.
                   </p>
                   <div className="mt-6">
                     <button
                       onClick={() => setShowAddOccasionModal(true)}
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+                      className="aero-button"
                     >
                       <Plus className="h-5 w-5 mr-2" />
                       Add Occasion
@@ -238,10 +238,10 @@ function MainLayout({ onLogout }: { onLogout: () => void }) {
             {/* People Section */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">People</h2>
+                <h2 className="text-2xl font-semibold text-sky-950 dark:text-sky-100">People</h2>
                 <button
                   onClick={() => setShowAddPersonModal(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="aero-button"
                 >
                   <Plus className="h-5 w-5 mr-2" />
                   Add Person
@@ -249,16 +249,16 @@ function MainLayout({ onLogout }: { onLogout: () => void }) {
               </div>
 
               {people.length === 0 ? (
-                <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="text-center py-12 aero-panel">
                   <Users className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No people</h3>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  <h3 className="mt-2 text-sm font-medium text-sky-950 dark:text-sky-100">No people</h3>
+                  <p className="mt-1 text-sm text-sky-700 dark:text-sky-300">
                     Add people you want to buy gifts for.
                   </p>
                   <div className="mt-6">
                     <button
                       onClick={() => setShowAddPersonModal(true)}
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
+                      className="aero-button"
                     >
                       <Plus className="h-5 w-5 mr-2" />
                       Add Person
@@ -333,7 +333,7 @@ export function App() {
 
   if (authenticated === null) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-gray-900 dark:text-white">Loading...</div>
       </div>
     );
