@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="144" height="144" viewBox="0 0 144 144">
+  <rect width="144" height="144" rx="9" fill="#3b82f6"/>
+  <g transform="translate(72, 72)">
+    <!-- Gift box body -->
+    <rect x="-39.375" y="-5.625" width="78.75" height="50.625" rx="4.5" fill="white" opacity="0.95"/>
+    <!-- Gift box lid -->
+    <rect x="-45" y="-16.875" width="90" height="16.875" rx="3.375" fill="white"/>
+    <!-- Vertical ribbon -->
+    <rect x="-4.21875" y="-16.875" width="8.4375" height="67.5" fill="#ef4444"/>
+    <!-- Horizontal ribbon -->
+    <rect x="-45" y="-12.65625" width="90" height="8.4375" fill="#ef4444"/>
+    <!-- Bow left -->
+    <ellipse cx="-11.25" cy="-22.5" rx="11.25" ry="8.4375" fill="#ef4444"/>
+    <!-- Bow right -->
+    <ellipse cx="11.25" cy="-22.5" rx="11.25" ry="8.4375" fill="#ef4444"/>
+    <!-- Bow center -->
+    <circle cy="-22.5" r="4.21875" fill="#dc2626"/>
+  </g>
+</svg>

@@ -1,8 +1,11 @@
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { query } from '../db.js';
 import { signToken, requireAuth, AuthRequest, verifyToken } from '../middleware/auth.js';
 import { setSession, deleteSession } from '../redis.js';
+import { sendPasswordResetEmail } from '../email.js';
+import redis from '../redis.js';
 
 const router = Router();
 
@@ -124,6 +127,82 @@ router.get('/me', requireAuth as any, async (req: AuthRequest, res: Response) =>
   } catch (err) {
     console.error('Get user error:', err);
     res.status(500).json({ error: 'Failed to get user' });
+  }
+});
+
+// POST /api/auth/forgot-password
+router.post('/forgot-password', async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      res.status(400).json({ error: 'Email is required' });
+      return;
+    }
+
+    const result = await query('SELECT id, email FROM users WHERE email = $1', [email.toLowerCase()]);
+
+    // Always return success to prevent email enumeration
+    if (result.rows.length === 0) {
+      res.json({ message: 'If an account with that email exists, a password reset link has been sent.' });
+      return;
+    }
+
+    const user = result.rows[0];
+    const resetToken = crypto.randomBytes(32).toString('hex');
+
+    // Store reset token in Redis with 1 hour TTL
+    await redis.set(`reset:${resetToken}`, user.id, 'EX', 3600);
+
+    try {
+      await sendPasswordResetEmail(user.email, resetToken);
+    } catch (emailErr) {
+      console.error('Failed to send reset email:', emailErr);
+      // Still return success — in development the token is logged
+      console.log(`Password reset token for ${user.email}: ${resetToken}`);
+    }
+
+    res.json({ message: 'If an account with that email exists, a password reset link has been sent.' });
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    res.status(500).json({ error: 'Failed to process request' });
+  }
+});
+
+// POST /api/auth/reset-password
+router.post('/reset-password', async (req: Request, res: Response) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      res.status(400).json({ error: 'Token and new password are required' });
+      return;
+    }
+
+    if (password.length < 6) {
+      res.status(400).json({ error: 'Password must be at least 6 characters' });
+      return;
+    }
+
+    // Look up the reset token in Redis
+    const userId = await redis.get(`reset:${token}`);
+
+    if (!userId) {
+      res.status(400).json({ error: 'Invalid or expired reset token' });
+      return;
+    }
+
+    // Update password
+    const passwordHash = await bcrypt.hash(password, 12);
+    await query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
+
+    // Delete the used token
+    await redis.del(`reset:${token}`);
+
+    res.json({ message: 'Password has been reset successfully. You can now sign in.' });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    res.status(500).json({ error: 'Failed to reset password' });
   }
 });
 

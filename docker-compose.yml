@@ -28,6 +28,12 @@ services:
       timeout: 5s
       retries: 5
 
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   backend:
     build:
       context: ./server
@@ -42,6 +48,10 @@ services:
       JWT_SECRET: change-this-to-a-secure-secret-in-production
       PORT: 3001
       CORS_ORIGIN: http://localhost
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+      SMTP_FROM: noreply@giftable.local
+      APP_URL: http://localhost
     ports:
       - "3001:3001"
     depends_on:
@@ -49,6 +59,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mailhog:
+        condition: service_started
 
   frontend:
     build:
