@@ -33,15 +33,10 @@ export function ResetPassword() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900 p-4">
-        <div className="w-full max-w-md space-y-4 text-center">
-          <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-4 rounded-md">
-            Invalid reset link. The token is missing.
-          </div>
-          <Link
-            to="/forgot-password"
-            className="text-sm text-blue-600 hover:text-blue-500 font-medium"
-          >
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="aero-panel w-full max-w-md p-8 text-center space-y-4">
+          <div className="rounded-xl border border-red-300/70 bg-red-100/70 p-4 text-sm text-red-700">Invalid reset link. The token is missing.</div>
+          <Link to="/forgot-password" className="text-sm text-sky-900 underline dark:text-cyan-200">
             Request a new reset link
           </Link>
         </div>
@@ -50,88 +45,39 @@ export function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900 p-4">
-      <div className="w-full max-w-md space-y-8">
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="aero-panel w-full max-w-md p-8 space-y-6">
         <div className="text-center">
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Set new password
-          </h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Enter your new password below.
-          </p>
+          <h1 className="text-2xl font-bold text-sky-950 dark:text-sky-100">Set new password</h1>
+          <p className="mt-2 text-sm text-sky-700 dark:text-sky-200">Enter your new password below.</p>
         </div>
 
         {success ? (
           <div className="space-y-4">
-            <div className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-4 rounded-md">
-              Your password has been reset successfully.
-            </div>
-            <div className="text-center">
-              <Link
-                to="/auth"
-                className="inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-              >
-                Sign in
-              </Link>
-            </div>
+            <div className="rounded-xl border border-emerald-300/70 bg-emerald-100/70 p-4 text-sm text-emerald-900">Your password has been reset successfully.</div>
+            <Link to="/auth" className="aero-button w-full">Sign in</Link>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-md">
-                {error}
-              </div>
-            )}
+            {error && <div className="rounded-xl border border-red-300/70 bg-red-100/70 p-3 text-sm text-red-700">{error}</div>}
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                New password
-              </label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                required
-                minLength={6}
-              />
+              <label htmlFor="password" className="mb-1 block text-sm font-medium text-sky-900 dark:text-sky-100">New password</label>
+              <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="aero-input" required minLength={6} />
             </div>
 
             <div>
-              <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Confirm new password
-              </label>
-              <input
-                id="confirm-password"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                required
-                minLength={6}
-              />
+              <label htmlFor="confirm-password" className="mb-1 block text-sm font-medium text-sky-900 dark:text-sky-100">Confirm new password</label>
+              <input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="aero-input" required minLength={6} />
             </div>
 
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Password must be at least 6 characters.
-            </p>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-            >
+            <p className="text-xs text-sky-700 dark:text-sky-200">Password must be at least 6 characters.</p>
+            <button type="submit" disabled={loading} className="aero-button w-full disabled:opacity-60">
               {loading ? 'Resetting...' : 'Reset password'}
             </button>
 
             <div className="text-center">
-              <Link
-                to="/auth"
-                className="text-sm text-blue-600 hover:text-blue-500 font-medium"
-              >
-                Back to sign in
-              </Link>
+              <Link to="/auth" className="text-sm text-sky-900 underline dark:text-cyan-200">Back to sign in</Link>
             </div>
           </form>
         )}

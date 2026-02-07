@@ -52,10 +52,10 @@ export function OccasionDetails({
       </div>
 
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">People</h3>
+        <h3 className="text-lg font-medium text-sky-950 dark:text-sky-100">People</h3>
         <button
           onClick={() => setShowAddPersonModal(true)}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none"
+          className="aero-button"
         >
           <Plus className="h-5 w-5 mr-2" />
           Add Person
@@ -66,12 +66,12 @@ export function OccasionDetails({
         {occasionPeople.map((person) => (
           <div
             key={person.id}
-            className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
+            className="aero-panel p-4 cursor-pointer hover:brightness-105 transition"
             onClick={() => onSelectPerson(person)}
           >
             <div className="flex justify-between items-start">
               <div>
-                <h4 className="text-lg font-medium text-gray-900 dark:text-white">
+                <h4 className="text-lg font-medium text-sky-950 dark:text-sky-100">
                   {person.name}
                 </h4>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
