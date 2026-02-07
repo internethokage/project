@@ -7,13 +7,15 @@ export function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewResetUrl, setPreviewResetUrl] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setLoading(true);
       setError(null);
-      await api.post('/api/auth/forgot-password', { email });
+      const response = await api.post<{ message: string; previewResetUrl?: string }>('/api/auth/forgot-password', { email });
+      setPreviewResetUrl(response.previewResetUrl || null);
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
