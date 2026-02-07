@@ -1,11 +1,11 @@
 import pg from 'pg';
 
 const pool = new pg.Pool({
-  host: process.env.DB_HOST || 'postgres',
-  port: Number(process.env.DB_PORT) || 5432,
-  database: process.env.DB_NAME || 'giftable',
-  user: process.env.DB_USER || 'giftable',
-  password: process.env.DB_PASSWORD || 'giftable',
+  host: process.env.DATABASE_HOST || 'postgres',
+  port: Number(process.env.DATABASE_PORT) || 5432,
+  database: process.env.DATABASE_NAME || 'giftable',
+  user: process.env.DATABASE_USER || 'giftable',
+  password: process.env.DATABASE_PASSWORD || 'giftable',
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,

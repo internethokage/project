@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 
 const TOKEN_KEY = 'giftable-token';
 const USER_KEY = 'giftable-user';

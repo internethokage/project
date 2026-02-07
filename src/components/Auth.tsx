@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { authApi } from '../lib/api';
 
 interface AuthProps {
@@ -86,10 +87,19 @@ export function Auth({ onAuthSuccess }: AuthProps) {
             />
           </div>
 
-          {isSignUp && (
+          {isSignUp ? (
             <p className="text-xs text-gray-500 dark:text-gray-400">
               Password must be at least 6 characters.
             </p>
+          ) : (
+            <div className="text-right">
+              <Link
+                to="/forgot-password"
+                className="text-xs text-blue-600 hover:text-blue-500 font-medium"
+              >
+                Forgot password?
+              </Link>
+            </div>
           )}
 
           <button

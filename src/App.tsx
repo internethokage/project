@@ -16,6 +16,8 @@ import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { authApi, getToken, clearToken, getStoredUser, type AuthUser } from './lib/api';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AccountDeletion } from './components/AccountDeletion';
+import { ForgotPassword } from './components/ForgotPassword';
+import { ResetPassword } from './components/ResetPassword';
 
 function MainLayout({ onLogout }: { onLogout: () => void }) {
   const {
@@ -342,6 +344,8 @@ export function App() {
       <Routes>
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/delete-account" element={<AccountDeletion />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route
           path="/auth"
           element={
