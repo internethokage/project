@@ -3,11 +3,23 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { query } from '../db.js';
 import { signToken, requireAuth, AuthRequest, verifyToken } from '../middleware/auth.js';
-import { setSession, deleteSession } from '../redis.js';
+import { setSession, deleteSession, getSession } from '../redis.js';
 import { sendPasswordResetEmail } from '../email.js';
 import redis from '../redis.js';
 
 const router = Router();
+
+async function shouldAssignAdmin(email: string): Promise<boolean> {
+  const configured = (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (configured.includes(email.toLowerCase())) return true;
+
+  const admins = await query('SELECT COUNT(*)::int AS count FROM users WHERE is_admin = true');
+  return admins.rows[0]?.count === 0;
+}
 
 // POST /api/auth/register
 router.post('/register', async (req: Request, res: Response) => {
@@ -24,28 +36,27 @@ router.post('/register', async (req: Request, res: Response) => {
       return;
     }
 
-    // Check if user exists
-    const existing = await query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
+    const normalizedEmail = email.toLowerCase();
+    const existing = await query('SELECT id FROM users WHERE email = $1', [normalizedEmail]);
     if (existing.rows.length > 0) {
       res.status(409).json({ error: 'An account with this email already exists' });
       return;
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
+    const isAdmin = await shouldAssignAdmin(normalizedEmail);
     const result = await query(
-      'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email, created_at',
-      [email.toLowerCase(), passwordHash]
+      'INSERT INTO users (email, password_hash, is_admin) VALUES ($1, $2, $3) RETURNING id, email, is_admin, created_at',
+      [normalizedEmail, passwordHash, isAdmin]
     );
 
     const user = result.rows[0];
-    const token = signToken({ userId: user.id, email: user.email });
-
-    // Store session in Redis (7 days)
+    const token = signToken({ userId: user.id, email: user.email, isAdmin: user.is_admin });
     await setSession(token, user.id, 7 * 24 * 60 * 60);
 
     res.status(201).json({
       token,
-      user: { id: user.id, email: user.email },
+      user: { id: user.id, email: user.email, isAdmin: user.is_admin },
     });
   } catch (err) {
     console.error('Registration error:', err);
@@ -64,7 +75,7 @@ router.post('/login', async (req: Request, res: Response) => {
     }
 
     const result = await query(
-      'SELECT id, email, password_hash FROM users WHERE email = $1',
+      'SELECT id, email, password_hash, is_admin FROM users WHERE email = $1',
       [email.toLowerCase()]
     );
 
@@ -81,12 +92,12 @@ router.post('/login', async (req: Request, res: Response) => {
       return;
     }
 
-    const token = signToken({ userId: user.id, email: user.email });
+    const token = signToken({ userId: user.id, email: user.email, isAdmin: user.is_admin });
     await setSession(token, user.id, 7 * 24 * 60 * 60);
 
     res.json({
       token,
-      user: { id: user.id, email: user.email },
+      user: { id: user.id, email: user.email, isAdmin: user.is_admin },
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -94,13 +105,11 @@ router.post('/login', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/auth/logout
 router.post('/logout', requireAuth as any, async (req: AuthRequest, res: Response) => {
   try {
     const token = req.headers.authorization?.slice(7);
     if (token) {
       await deleteSession(token);
-      // Mark session as revoked for remaining TTL
       await setSession(token, 'revoked', 7 * 24 * 60 * 60);
     }
     res.json({ message: 'Logged out' });
@@ -110,11 +119,10 @@ router.post('/logout', requireAuth as any, async (req: AuthRequest, res: Respons
   }
 });
 
-// GET /api/auth/me
 router.get('/me', requireAuth as any, async (req: AuthRequest, res: Response) => {
   try {
     const result = await query(
-      'SELECT id, email, created_at FROM users WHERE id = $1',
+      'SELECT id, email, is_admin, created_at FROM users WHERE id = $1',
       [req.userId]
     );
 
@@ -123,14 +131,14 @@ router.get('/me', requireAuth as any, async (req: AuthRequest, res: Response) =>
       return;
     }
 
-    res.json({ user: result.rows[0] });
+    const user = result.rows[0];
+    res.json({ user: { ...user, isAdmin: user.is_admin } });
   } catch (err) {
     console.error('Get user error:', err);
     res.status(500).json({ error: 'Failed to get user' });
   }
 });
 
-// POST /api/auth/forgot-password
 router.post('/forgot-password', async (req: Request, res: Response) => {
   try {
     const { email } = req.body;
@@ -142,7 +150,6 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
 
     const result = await query('SELECT id, email FROM users WHERE email = $1', [email.toLowerCase()]);
 
-    // Always return success to prevent email enumeration
     if (result.rows.length === 0) {
       res.json({ message: 'If an account with that email exists, a password reset link has been sent.' });
       return;
@@ -150,26 +157,27 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
 
     const user = result.rows[0];
     const resetToken = crypto.randomBytes(32).toString('hex');
-
-    // Store reset token in Redis with 1 hour TTL
     await redis.set(`reset:${resetToken}`, user.id, 'EX', 3600);
+
+    const previewResetUrl = `${process.env.APP_URL || 'http://localhost'}/reset-password?token=${resetToken}`;
 
     try {
       await sendPasswordResetEmail(user.email, resetToken);
     } catch (emailErr) {
       console.error('Failed to send reset email:', emailErr);
-      // Still return success — in development the token is logged
       console.log(`Password reset token for ${user.email}: ${resetToken}`);
     }
 
-    res.json({ message: 'If an account with that email exists, a password reset link has been sent.' });
+    res.json({
+      message: 'If an account with that email exists, a password reset link has been sent.',
+      previewResetUrl: process.env.NODE_ENV === 'production' ? undefined : previewResetUrl,
+    });
   } catch (err) {
     console.error('Forgot password error:', err);
     res.status(500).json({ error: 'Failed to process request' });
   }
 });
 
-// POST /api/auth/reset-password
 router.post('/reset-password', async (req: Request, res: Response) => {
   try {
     const { token, password } = req.body;
@@ -184,7 +192,6 @@ router.post('/reset-password', async (req: Request, res: Response) => {
       return;
     }
 
-    // Look up the reset token in Redis
     const userId = await redis.get(`reset:${token}`);
 
     if (!userId) {
@@ -192,11 +199,8 @@ router.post('/reset-password', async (req: Request, res: Response) => {
       return;
     }
 
-    // Update password
     const passwordHash = await bcrypt.hash(password, 12);
     await query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
-
-    // Delete the used token
     await redis.del(`reset:${token}`);
 
     res.json({ message: 'Password has been reset successfully. You can now sign in.' });
@@ -206,16 +210,24 @@ router.post('/reset-password', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/auth/verify - lightweight token check
-router.get('/verify', (req: Request, res: Response) => {
+router.get('/verify', async (req: Request, res: Response) => {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
     res.status(401).json({ valid: false });
     return;
   }
+
+  const token = header.slice(7);
+
   try {
-    const payload = verifyToken(header.slice(7));
-    res.json({ valid: true, user: { id: payload.userId, email: payload.email } });
+    const session = await getSession(token);
+    if (session === 'revoked') {
+      res.status(401).json({ valid: false });
+      return;
+    }
+
+    const payload = verifyToken(token);
+    res.json({ valid: true, user: { id: payload.userId, email: payload.email, isAdmin: payload.isAdmin } });
   } catch {
     res.status(401).json({ valid: false });
   }

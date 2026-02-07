@@ -22,10 +22,10 @@ export function AddOccasionModal({ onClose, onAdd }: AddOccasionModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+    <div className="fixed inset-0 bg-sky-950/45 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+      <div className="aero-panel max-w-md w-full p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white">Add Occasion</h2>
+          <h2 className="text-lg font-medium text-sky-950 dark:text-sky-100">Add Occasion</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
             <X size={20} />
           </button>
@@ -41,7 +41,7 @@ export function AddOccasionModal({ onClose, onAdd }: AddOccasionModalProps) {
                 value={type}
                 onChange={(e) => setType(e.target.value)}
                 placeholder="e.g., Christmas 2024, Birthday"
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="aero-input"
                 required
               />
             </div>
@@ -54,7 +54,7 @@ export function AddOccasionModal({ onClose, onAdd }: AddOccasionModalProps) {
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="aero-input"
                 required
               />
             </div>
@@ -67,7 +67,7 @@ export function AddOccasionModal({ onClose, onAdd }: AddOccasionModalProps) {
                 type="number"
                 value={budget}
                 onChange={(e) => setBudget(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                className="aero-input"
                 required
                 min="0"
                 step="0.01"
@@ -85,7 +85,7 @@ export function AddOccasionModal({ onClose, onAdd }: AddOccasionModalProps) {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm text-white bg-blue-600 dark:bg-blue-500 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600"
+              className="aero-button"
             >
               Add Occasion
             </button>

@@ -6,6 +6,7 @@ import authRoutes from './routes/auth.js';
 import occasionsRoutes from './routes/occasions.js';
 import peopleRoutes from './routes/people.js';
 import giftsRoutes from './routes/gifts.js';
+import adminRoutes from './routes/admin.js';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
@@ -22,6 +23,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/occasions', occasionsRoutes);
 app.use('/api/people', peopleRoutes);
 app.use('/api/gifts', giftsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', async (_req, res) => {

@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_URL ?? '';
 
 const TOKEN_KEY = 'giftable-token';
 const USER_KEY = 'giftable-user';
@@ -6,9 +6,19 @@ const USER_KEY = 'giftable-user';
 export interface AuthUser {
   id: string;
   email: string;
+  isAdmin?: boolean;
 }
 
-// Token management
+export interface AdminUser {
+  id: string;
+  email: string;
+  is_admin: boolean;
+  created_at: string;
+  occasion_count: number;
+  people_count: number;
+  gift_count: number;
+}
+
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
@@ -35,16 +45,15 @@ export function setStoredUser(user: AuthUser): void {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
-// HTTP helpers
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> || {}),
+    ...((options.headers as Record<string, string>) || {}),
   };
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
 
   const res = await fetch(`${API_BASE}${path}`, {
@@ -58,7 +67,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new Error('Session expired');
   }
 
-  const data = await res.json();
+  const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
     throw new Error(data.error || `Request failed (${res.status})`);
@@ -74,7 +83,6 @@ export const api = {
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 };
 
-// Auth API
 export const authApi = {
   async register(email: string, password: string): Promise<{ token: string; user: AuthUser }> {
     const data = await api.post<{ token: string; user: AuthUser }>('/api/auth/register', { email, password });
@@ -125,4 +133,11 @@ export const authApi = {
       return getStoredUser();
     }
   },
+};
+
+export const adminApi = {
+  listUsers: () => api.get<{ users: AdminUser[] }>('/api/admin/users'),
+  setAdmin: (userId: string, isAdmin: boolean) => api.patch<{ user: AdminUser }>(`/api/admin/users/${userId}/admin`, { isAdmin }),
+  deleteUser: (userId: string) => api.delete<{ message: string }>(`/api/admin/users/${userId}`),
+  createResetLink: (userId: string) => api.post<{ resetUrl: string }>(`/api/admin/users/${userId}/reset-link`, {}),
 };

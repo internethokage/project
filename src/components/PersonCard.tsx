@@ -25,10 +25,10 @@ export function PersonCard({ person, gifts, onSelect, onRemove }: PersonCardProp
   return (
     <div
       onClick={() => onSelect(person)}
-      className="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100 dark:border-gray-700"
+      className="aero-panel p-4 cursor-pointer hover:brightness-105 transition"
     >
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">{person.name}</h3>
+        <h3 className="text-lg font-medium text-sky-950 dark:text-sky-100">{person.name}</h3>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500 dark:text-gray-400">{person.relationship}</span>
           <button

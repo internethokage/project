@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { X, Sun, Moon, Plus, Trash2, Check, Sparkles } from 'lucide-react';
-import type { LLMConfig, LLMProvider } from '../types';
+import React, { useEffect, useState } from 'react';
+import { X, Sun, Moon, Plus, Trash2, Check, Sparkles, Shield } from 'lucide-react';
+import type { LLMProvider } from '../types';
 import { useLLMConfig } from '../hooks/useLLMConfig';
+import { adminApi, getStoredUser, type AdminUser } from '../lib/api';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -17,18 +18,43 @@ const PROVIDER_DEFAULTS: Record<LLMProvider, { baseUrl: string; model: string }>
 };
 
 export function SettingsPanel({ isOpen, onClose, isDarkMode, onToggleDarkMode }: SettingsPanelProps) {
-  const { configs, activeConfig, addConfig, updateConfig, deleteConfig, setActive } = useLLMConfig();
+  const { configs, addConfig, deleteConfig, setActive } = useLLMConfig();
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-
-  // Add form state
   const [newProvider, setNewProvider] = useState<LLMProvider>('anthropic');
   const [newName, setNewName] = useState('');
   const [newApiKey, setNewApiKey] = useState('');
   const [newBaseUrl, setNewBaseUrl] = useState('');
   const [newModel, setNewModel] = useState('');
 
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [adminError, setAdminError] = useState<string | null>(null);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [currentUserIsAdmin, setCurrentUserIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setCurrentUserIsAdmin(Boolean(getStoredUser()?.isAdmin));
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !currentUserIsAdmin) return;
+    loadUsers();
+  }, [isOpen, currentUserIsAdmin]);
+
   if (!isOpen) return null;
+
+  const loadUsers = async () => {
+    try {
+      setLoadingUsers(true);
+      setAdminError(null);
+      const { users } = await adminApi.listUsers();
+      setAdminUsers(users);
+    } catch (error) {
+      setAdminError(error instanceof Error ? error.message : 'Failed to load users');
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   const resetForm = () => {
     setNewProvider('anthropic');
@@ -65,250 +91,146 @@ export function SettingsPanel({ isOpen, onClose, isDarkMode, onToggleDarkMode }:
     }
   };
 
-  const maskApiKey = (key: string) => {
-    if (key.length <= 8) return '****';
-    return key.slice(0, 4) + '...' + key.slice(-4);
+  const maskApiKey = (key: string) => (key.length <= 8 ? '****' : `${key.slice(0, 4)}...${key.slice(-4)}`);
+
+  const handleToggleAdmin = async (userId: string, nextValue: boolean) => {
+    try {
+      await adminApi.setAdmin(userId, nextValue);
+      await loadUsers();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to update role');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, email: string) => {
+    if (!confirm(`Delete ${email} and all associated data?`)) return;
+    try {
+      await adminApi.deleteUser(userId);
+      await loadUsers();
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to delete user');
+    }
+  };
+
+  const handleGenerateResetLink = async (userId: string) => {
+    try {
+      const { resetUrl } = await adminApi.createResetLink(userId);
+      await navigator.clipboard.writeText(resetUrl);
+      alert('Reset link copied to clipboard');
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Failed to generate reset link');
+    }
   };
 
   return (
     <div className="fixed inset-0 overflow-hidden z-50">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-black/20 transition-opacity" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 max-w-full flex items-start justify-end">
+        <div className="w-full max-w-2xl h-full">
+          <div className="h-full flex flex-col aero-panel rounded-none overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-white/20">
+              <h2 className="text-lg font-medium text-sky-950 dark:text-sky-100">Settings</h2>
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-500"><X className="h-5 w-5" /></button>
+            </div>
 
-        <div className="fixed inset-y-0 right-0 max-w-full flex items-start justify-end">
-          <div className="w-full max-w-lg h-full">
-            <div className="h-full flex flex-col bg-white dark:bg-gray-800 shadow-xl overflow-y-auto">
-              <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-700">
-                <h2 className="text-lg font-medium text-gray-900 dark:text-white">Settings</h2>
-                <button
-                  onClick={onClose}
-                  className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+            <div className="flex-1 px-6 py-6 space-y-8">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">Appearance</h3>
+                <div className="flex items-center justify-between py-3">
+                  <div className="space-y-1">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">Theme</span>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Toggle dark mode</p>
+                  </div>
+                  <button onClick={onToggleDarkMode} className={`${isDarkMode ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'} relative inline-flex h-7 w-14 rounded-full`}>
+                    <span className={`${isDarkMode ? 'translate-x-7' : 'translate-x-0'} inline-flex h-6 w-6 transform rounded-full bg-white items-center justify-center`}>
+                      {isDarkMode ? <Moon className="h-3.5 w-3.5 text-blue-600" /> : <Sun className="h-3.5 w-3.5 text-gray-400" />}
+                    </span>
+                  </button>
+                </div>
               </div>
 
-              <div className="flex-1 px-6 py-6 space-y-8">
-                {/* Theme Section */}
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider mb-4">Appearance</h3>
-                  <div className="flex items-center justify-between py-3">
-                    <div className="space-y-1">
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">Theme</span>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Toggle dark mode</p>
-                    </div>
-                    <button
-                      onClick={onToggleDarkMode}
-                      className={`${
-                        isDarkMode ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
-                      } relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800`}
-                      role="switch"
-                      aria-checked={isDarkMode}
-                    >
-                      <span
-                        className={`${isDarkMode ? 'translate-x-7' : 'translate-x-0'} pointer-events-none inline-flex h-6 w-6 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out items-center justify-center`}
-                      >
-                        {isDarkMode ? (
-                          <Moon className="h-3.5 w-3.5 text-blue-600" />
-                        ) : (
-                          <Sun className="h-3.5 w-3.5 text-gray-400" />
-                        )}
-                      </span>
-                    </button>
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">AI Providers</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Configure LLM APIs for gift suggestions</p>
                   </div>
+                  <button onClick={() => setShowAddForm(true)} className="aero-button px-3 py-1.5 text-xs"><Plus className="h-3.5 w-3.5" />Add</button>
                 </div>
 
-                {/* LLM Providers Section */}
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">AI Providers</h3>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Configure LLM APIs for gift suggestions
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setShowAddForm(true)}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/50 border border-purple-200 dark:border-purple-700"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Provider
-                    </button>
-                  </div>
-
-                  {/* Existing configs */}
-                  {configs.length === 0 && !showAddForm && (
-                    <div className="text-center py-8 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
-                      <Sparkles className="mx-auto h-8 w-8 text-gray-400 dark:text-gray-500" />
-                      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">No LLM providers configured</p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                        Add Anthropic, OpenAI, or a custom/local LLM
-                      </p>
-                      <button
-                        onClick={() => setShowAddForm(true)}
-                        className="mt-3 text-sm text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200"
-                      >
-                        Add your first provider
-                      </button>
-                    </div>
-                  )}
-
-                  <div className="space-y-3">
-                    {configs.map((config) => (
-                      <div
-                        key={config.id}
-                        className={`p-4 rounded-lg border ${
-                          config.isActive
-                            ? 'border-purple-300 dark:border-purple-600 bg-purple-50 dark:bg-purple-900/20'
-                            : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                              config.provider === 'anthropic'
-                                ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300'
-                                : config.provider === 'openai'
-                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                                : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                            }`}>
-                              {config.provider}
-                            </span>
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">{config.name}</span>
-                            {config.isActive && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-                                Active
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            {!config.isActive && (
-                              <button
-                                onClick={() => setActive(config.id)}
-                                className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-green-600 dark:hover:text-green-400 rounded"
-                                title="Set as active"
-                              >
-                                <Check className="w-4 h-4" />
-                              </button>
-                            )}
-                            <button
-                              onClick={() => handleDeleteConfig(config.id)}
-                              className="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded"
-                              title="Remove provider"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
+                <div className="space-y-3">
+                  {configs.map((config) => (
+                    <div key={config.id} className="aero-panel p-3">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">{config.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{config.provider} · {config.model}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">{maskApiKey(config.apiKey)}</p>
                         </div>
-                        <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
-                          <p>Model: {config.model}</p>
-                          <p>API Key: {maskApiKey(config.apiKey)}</p>
-                          {config.provider === 'custom' && config.baseUrl && (
-                            <p>URL: {config.baseUrl}</p>
-                          )}
+                        <div className="flex gap-2">
+                          {!config.isActive && <button onClick={() => setActive(config.id)} className="aero-button px-2 py-1 text-xs"><Check className="h-3.5 w-3.5" /></button>}
+                          <button onClick={() => handleDeleteConfig(config.id)} className="px-2 py-1 text-red-600"><Trash2 className="h-4 w-4" /></button>
                         </div>
                       </div>
-                    ))}
+                    </div>
+                  ))}
+                </div>
+
+                {showAddForm && (
+                  <form onSubmit={handleAddConfig} className="mt-4 aero-panel p-4 space-y-3">
+                    <select value={newProvider} onChange={(e) => handleProviderChange(e.target.value as LLMProvider)} className="aero-input">
+                      <option value="anthropic">Anthropic (Claude)</option>
+                      <option value="openai">OpenAI (GPT)</option>
+                      <option value="custom">Custom / Local LLM</option>
+                    </select>
+                    <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Display name" className="aero-input" />
+                    <input type="password" value={newApiKey} onChange={(e) => setNewApiKey(e.target.value)} placeholder="API key" className="aero-input" required={newProvider !== 'custom'} />
+                    <input type="text" value={newModel} onChange={(e) => setNewModel(e.target.value)} placeholder="Model" className="aero-input" />
+                    {newProvider === 'custom' && <input type="url" value={newBaseUrl} onChange={(e) => setNewBaseUrl(e.target.value)} placeholder="Base URL" className="aero-input" required />}
+                    <div className="flex justify-end gap-2">
+                      <button type="button" onClick={resetForm} className="px-3 py-1.5 text-sm">Cancel</button>
+                      <button type="submit" className="aero-button px-3 py-1.5 text-sm">Add Provider</button>
+                    </div>
+                  </form>
+                )}
+              </div>
+
+              {currentUserIsAdmin && (
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Shield className="w-4 h-4 text-sky-700" />
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wider">Admin</h3>
                   </div>
 
-                  {/* Add new config form */}
-                  {showAddForm && (
-                    <div className="mt-4 p-4 rounded-lg border border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/20">
-                      <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-4">Add LLM Provider</h4>
-                      <form onSubmit={handleAddConfig} className="space-y-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Provider</label>
-                          <select
-                            value={newProvider}
-                            onChange={(e) => handleProviderChange(e.target.value as LLMProvider)}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                          >
-                            <option value="anthropic">Anthropic (Claude)</option>
-                            <option value="openai">OpenAI (GPT)</option>
-                            <option value="custom">Custom / Local LLM</option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Display Name</label>
-                          <input
-                            type="text"
-                            value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
-                            placeholder={`My ${newProvider} API`}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">API Key</label>
-                          <input
-                            type="password"
-                            value={newApiKey}
-                            onChange={(e) => setNewApiKey(e.target.value)}
-                            placeholder={newProvider === 'anthropic' ? 'sk-ant-...' : newProvider === 'openai' ? 'sk-...' : 'API key (if required)'}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                            required={newProvider !== 'custom'}
-                          />
-                        </div>
-
-                        {newProvider === 'custom' && (
+                  {adminError && <div className="text-sm text-red-600">{adminError}</div>}
+                  {loadingUsers ? (
+                    <div className="text-sm text-gray-600 dark:text-gray-300">Loading users…</div>
+                  ) : (
+                    <div className="space-y-3">
+                      {adminUsers.map((user) => (
+                        <div key={user.id} className="aero-panel p-3 flex items-start justify-between gap-4">
                           <div>
-                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                              Base URL <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="url"
-                              value={newBaseUrl}
-                              onChange={(e) => setNewBaseUrl(e.target.value)}
-                              placeholder="http://localhost:11434/v1/chat/completions"
-                              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                              required
-                            />
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              Must be OpenAI-compatible API endpoint (works with Ollama, LM Studio, etc.)
+                            <p className="font-medium text-sky-950 dark:text-sky-100">{user.email}</p>
+                            <p className="text-xs text-sky-700 dark:text-sky-300">
+                              Occasions: {user.occasion_count} · People: {user.people_count} · Gifts: {user.gift_count}
                             </p>
                           </div>
-                        )}
-
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Model</label>
-                          <input
-                            type="text"
-                            value={newModel}
-                            onChange={(e) => setNewModel(e.target.value)}
-                            placeholder={PROVIDER_DEFAULTS[newProvider].model || 'model name'}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:outline-none"
-                          />
+                          <div className="flex gap-2">
+                            <button onClick={() => handleToggleAdmin(user.id, !user.is_admin)} className="aero-button px-2 py-1 text-xs">
+                              {user.is_admin ? 'Revoke Admin' : 'Make Admin'}
+                            </button>
+                            <button onClick={() => handleGenerateResetLink(user.id)} className="aero-button px-2 py-1 text-xs">Reset Link</button>
+                            <button onClick={() => handleDeleteUser(user.id, user.email)} className="px-2 py-1 text-xs text-red-700">Delete</button>
+                          </div>
                         </div>
-
-                        <div className="flex justify-end gap-2 pt-2">
-                          <button
-                            type="button"
-                            onClick={resetForm}
-                            className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="submit"
-                            className="px-3 py-1.5 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700"
-                          >
-                            Add Provider
-                          </button>
-                        </div>
-                      </form>
+                      ))}
                     </div>
                   )}
-
-                  {/* Info note */}
-                  <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      API keys are stored locally in your browser and are sent directly to the provider.
-                      They are never sent to Giftable servers.
-                    </p>
-                  </div>
                 </div>
+              )}
+
+              <div className="mt-4 p-3 bg-gray-50/60 dark:bg-gray-900/40 rounded-lg">
+                <p className="text-xs text-gray-500 dark:text-gray-400">API keys are stored locally in your browser and sent directly to providers.</p>
               </div>
             </div>
           </div>
