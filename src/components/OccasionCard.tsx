@@ -58,11 +58,11 @@ export function OccasionCard({
   return (
     <div
       onClick={() => onSelect(occasion)}
-      className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 cursor-pointer hover:shadow-md transition-shadow"
+      className="aero-panel p-4 cursor-pointer hover:brightness-105 transition"
     >
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+          <h3 className="text-lg font-medium text-sky-950 dark:text-sky-100">
             {occasion.type}
           </h3>
           <div className="mt-1 space-y-1">

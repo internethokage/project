@@ -49,7 +49,7 @@ export function PersonDetails({
           </button>
           <button
             onClick={() => setShowAddGiftModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+            className="aero-button"
           >
             <Plus className="w-4 h-4" />
             Add Gift
@@ -59,7 +59,7 @@ export function PersonDetails({
 
       <div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{person.name}</h2>
-        <p className="text-gray-500 dark:text-gray-400">{person.relationship}</p>
+        <p className="text-sky-700 dark:text-sky-300">{person.relationship}</p>
       </div>
 
       <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
@@ -114,7 +114,7 @@ export function PersonDetails({
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Gift Ideas</h3>
         {personGifts.length === 0 ? (
           <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <p className="text-gray-500 dark:text-gray-400">No gift ideas yet</p>
+            <p className="text-sky-700 dark:text-sky-300">No gift ideas yet</p>
             <button
               onClick={() => setShowAddGiftModal(true)}
               className="mt-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"

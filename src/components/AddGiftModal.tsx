@@ -28,8 +28,8 @@ export function AddGiftModal({ personId, onClose, onAdd }: AddGiftModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+    <div className="fixed inset-0 bg-sky-950/45 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="aero-panel p-6 w-full max-w-md">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Add Gift Idea</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
@@ -46,7 +46,7 @@ export function AddGiftModal({ personId, onClose, onAdd }: AddGiftModalProps) {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="aero-input"
               required
             />
           </div>
@@ -59,7 +59,7 @@ export function AddGiftModal({ personId, onClose, onAdd }: AddGiftModalProps) {
               type="number"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="aero-input"
               required
               min="0"
               step="0.01"
@@ -74,7 +74,7 @@ export function AddGiftModal({ personId, onClose, onAdd }: AddGiftModalProps) {
               type="url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="aero-input"
             />
           </div>
 
@@ -85,7 +85,7 @@ export function AddGiftModal({ personId, onClose, onAdd }: AddGiftModalProps) {
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="aero-input"
               rows={3}
             />
           </div>

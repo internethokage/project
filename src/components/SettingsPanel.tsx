@@ -79,7 +79,7 @@ export function SettingsPanel({ isOpen, onClose, isDarkMode, onToggleDarkMode }:
           <div className="w-full max-w-lg h-full">
             <div className="h-full flex flex-col bg-white dark:bg-gray-800 shadow-xl overflow-y-auto">
               <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-700">
-                <h2 className="text-lg font-medium text-gray-900 dark:text-white">Settings</h2>
+                <h2 className="text-lg font-medium text-sky-950 dark:text-sky-100">Settings</h2>
                 <button
                   onClick={onClose}
                   className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none"
