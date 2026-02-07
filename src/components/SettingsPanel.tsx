@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { X, Sun, Moon, Plus, Trash2, Check, Sparkles, Shield } from 'lucide-react';
+import { X, Sun, Moon, Plus, Trash2, Check, Shield } from 'lucide-react';
 import type { LLMProvider } from '../types';
 import { useLLMConfig } from '../hooks/useLLMConfig';
 import { adminApi, getStoredUser, type AdminUser } from '../lib/api';
@@ -124,21 +124,14 @@ export function SettingsPanel({ isOpen, onClose, isDarkMode, onToggleDarkMode }:
 
   return (
     <div className="fixed inset-0 overflow-hidden z-50">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-black/20 transition-opacity" onClick={onClose} />
-
-        <div className="fixed inset-y-0 right-0 max-w-full flex items-start justify-end">
-          <div className="w-full max-w-lg h-full">
-            <div className="h-full flex flex-col bg-white dark:bg-gray-800 shadow-xl overflow-y-auto">
-              <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 dark:border-gray-700">
-                <h2 className="text-lg font-medium text-sky-950 dark:text-sky-100">Settings</h2>
-                <button
-                  onClick={onClose}
-                  className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
+      <div className="absolute inset-0 bg-black/20" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 max-w-full flex items-start justify-end">
+        <div className="w-full max-w-2xl h-full">
+          <div className="h-full flex flex-col aero-panel rounded-none overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-white/20">
+              <h2 className="text-lg font-medium text-sky-950 dark:text-sky-100">Settings</h2>
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-500"><X className="h-5 w-5" /></button>
+            </div>
 
             <div className="flex-1 px-6 py-6 space-y-8">
               <div>

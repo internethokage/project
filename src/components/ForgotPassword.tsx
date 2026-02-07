@@ -37,6 +37,11 @@ export function ForgotPassword() {
             <div className="rounded-xl border border-emerald-300/70 bg-emerald-100/70 p-4 text-sm text-emerald-900">
               If an account with that email exists, a reset link has been sent.
             </div>
+            {previewResetUrl && (
+              <div className="rounded-xl border border-sky-200/70 bg-sky-100/70 p-3 text-xs text-sky-900 break-all">
+                Dev preview reset link: <a className="underline" href={previewResetUrl}>{previewResetUrl}</a>
+              </div>
+            )}
             <p className="text-center text-xs text-sky-700 dark:text-sky-200">Check spam folder if needed.</p>
             <Link to="/auth" className="aero-button w-full">
               Back to sign in

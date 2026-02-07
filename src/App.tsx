@@ -13,7 +13,7 @@ import type { Person, Occasion } from './types';
 import shopping from '/shopping.png';
 import { Auth } from './components/Auth';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
-import { authApi, getToken, clearToken, getStoredUser, type AuthUser } from './lib/api';
+import { authApi, getToken, clearToken, getStoredUser } from './lib/api';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AccountDeletion } from './components/AccountDeletion';
 import { ForgotPassword } from './components/ForgotPassword';
