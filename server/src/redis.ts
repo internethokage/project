@@ -12,23 +12,34 @@ const redis = new Redis(REDIS_URL, {
   lazyConnect: true,
 });
 
+let redisAvailable = false;
+
 redis.on('error', (err) => {
   console.error('Redis error:', err.message);
 });
 
 redis.on('connect', () => {
+  redisAvailable = true;
   console.log('Redis connected');
+});
+
+redis.on('end', () => {
+  redisAvailable = false;
 });
 
 export async function connectRedis(): Promise<void> {
   try {
     await redis.connect();
   } catch (err) {
+    redisAvailable = false;
     console.error('Failed to connect to Redis:', err);
   }
 }
 
-// Cache helpers
+export function isRedisAvailable(): boolean {
+  return redisAvailable;
+}
+
 function userKey(userId: string, resource: string): string {
   return `user:${userId}:${resource}`;
 }
@@ -69,9 +80,9 @@ export async function invalidateUserCache(userId: string): Promise<void> {
   }
 }
 
-// Session storage
 export async function setSession(token: string, userId: string, ttl: number): Promise<void> {
   try {
+    if (!redisAvailable) return;
     await redis.set(`session:${token}`, userId, 'EX', ttl);
   } catch {
     // session store failures are non-fatal since JWT is self-contained
@@ -80,6 +91,7 @@ export async function setSession(token: string, userId: string, ttl: number): Pr
 
 export async function getSession(token: string): Promise<string | null> {
   try {
+    if (!redisAvailable) return null;
     return await redis.get(`session:${token}`);
   } catch {
     return null;
@@ -88,6 +100,7 @@ export async function getSession(token: string): Promise<string | null> {
 
 export async function deleteSession(token: string): Promise<void> {
   try {
+    if (!redisAvailable) return;
     await redis.del(`session:${token}`);
   } catch {
     // non-fatal

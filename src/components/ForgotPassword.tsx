@@ -7,13 +7,17 @@ export function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewResetUrl, setPreviewResetUrl] = useState<string | null>(null);
+  const [mailboxPreviewUrl, setMailboxPreviewUrl] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setLoading(true);
       setError(null);
-      await api.post('/api/auth/forgot-password', { email });
+      const response = await api.post<{ message: string; previewResetUrl?: string; mailboxPreviewUrl?: string }>('/api/auth/forgot-password', { email });
+      setPreviewResetUrl(response.previewResetUrl || null);
+      setMailboxPreviewUrl(response.mailboxPreviewUrl || null);
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -23,74 +27,45 @@ export function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900 p-4">
-      <div className="w-full max-w-md space-y-8">
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="aero-panel w-full max-w-md p-8 space-y-6">
         <div className="text-center">
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Reset your password
-          </h1>
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            Enter your email and we'll send you a reset link.
-          </p>
+          <h1 className="text-2xl font-bold text-sky-950 dark:text-sky-100">Reset your password</h1>
+          <p className="mt-2 text-sm text-sky-700 dark:text-sky-200">Enter your email and we'll send you a reset link.</p>
         </div>
 
         {submitted ? (
           <div className="space-y-4">
-            <div className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-4 rounded-md">
-              If an account with that email exists, a password reset link has been sent. Check your email inbox.
+            <div className="rounded-xl border border-emerald-300/70 bg-emerald-100/70 p-4 text-sm text-emerald-900">
+              If an account with that email exists, a reset link has been sent.
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-              Using Docker locally? Check the Mailhog UI at{' '}
-              <a href="http://localhost:8025" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-500">
-                http://localhost:8025
-              </a>
-            </p>
-            <div className="text-center">
-              <Link
-                to="/auth"
-                className="text-sm text-blue-600 hover:text-blue-500 font-medium"
-              >
-                Back to sign in
-              </Link>
-            </div>
+            {mailboxPreviewUrl && (
+              <div className="rounded-xl border border-sky-200/70 bg-sky-100/70 p-3 text-xs text-sky-900 break-all">
+                Local Mailhog inbox: <a className="underline" href={mailboxPreviewUrl} target="_blank" rel="noreferrer">{mailboxPreviewUrl}</a>
+              </div>
+            )}
+            {previewResetUrl && (
+              <div className="rounded-xl border border-sky-200/70 bg-sky-100/70 p-3 text-xs text-sky-900 break-all">
+                Dev preview reset link: <a className="underline" href={previewResetUrl}>{previewResetUrl}</a>
+              </div>
+            )}
+            <p className="text-center text-xs text-sky-700 dark:text-sky-200">Check spam folder if needed.</p>
+            <Link to="/auth" className="aero-button w-full">
+              Back to sign in
+            </Link>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded-md">
-                {error}
-              </div>
-            )}
-
+            {error && <div className="rounded-xl border border-red-300/70 bg-red-100/70 p-3 text-sm text-red-700">{error}</div>}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Email address
-              </label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-sm"
-                required
-              />
+              <label className="mb-1 block text-sm font-medium text-sky-900 dark:text-sky-100">Email</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="aero-input" required />
             </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-            >
+            <button type="submit" disabled={loading} className="aero-button w-full disabled:opacity-60">
               {loading ? 'Sending...' : 'Send reset link'}
             </button>
-
             <div className="text-center">
-              <Link
-                to="/auth"
-                className="text-sm text-blue-600 hover:text-blue-500 font-medium"
-              >
-                Back to sign in
-              </Link>
+              <Link to="/auth" className="text-sm text-sky-900 underline dark:text-cyan-200">Back to sign in</Link>
             </div>
           </form>
         )}
