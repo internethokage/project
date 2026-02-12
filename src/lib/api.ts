@@ -63,7 +63,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (res.status === 401) {
     clearToken();
-    window.dispatchEvent(new CustomEvent('auth:logout'));
+    window.dispatchEvent(new CustomEvent('auth:logout', { detail: { reason: 'session_expired' } }));
     throw new Error('Session expired');
   }
 

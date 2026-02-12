@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { authApi } from '../lib/api';
 
 interface AuthProps {
@@ -7,7 +7,6 @@ interface AuthProps {
 }
 
 export function Auth({ onAuthSuccess }: AuthProps) {
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,8 +25,8 @@ export function Auth({ onAuthSuccess }: AuthProps) {
         await authApi.login(email, password);
       }
 
+      // Call onAuthSuccess to update auth state — the route will navigate to '/' automatically
       onAuthSuccess?.();
-      navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {

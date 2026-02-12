@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, Plus, X, AlertCircle, Loader2, Settings } from 'lucide-react';
 import type { Person, Gift, GiftSuggestion } from '../types';
 import { llmService } from '../services/llmService';
+import { api } from '../lib/api';
 
 interface AISuggestionsPanelProps {
   person: Person;
@@ -22,26 +23,68 @@ export function AISuggestionsPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [addedIds, setAddedIds] = useState<Set<number>>(new Set());
+  const [sourceLabel, setSourceLabel] = useState<string | null>(null);
 
   const activeConfig = llmService.getActiveConfig();
 
+  /**
+   * Try server-side /api/ai/suggestions first (uses server env config).
+   * Fall back to client-side LLM config if server returns 503 (not configured).
+   */
   const handleGenerate = async () => {
-    if (!activeConfig) return;
-
     setLoading(true);
     setError(null);
     setSuggestions([]);
     setAddedIds(new Set());
+    setSourceLabel(null);
 
     try {
-      const existingTitles = existingGifts.map(g => g.title);
-      const results = await llmService.getGiftSuggestions(
-        activeConfig,
-        person.name,
-        person.relationship,
-        Math.max(budget, 0),
-        existingTitles
-      );
+      // Build gift context payload for server
+      const giftPayload = existingGifts.map(g => ({
+        title: g.title,
+        price: g.price,
+        status: g.status,
+        notes: g.notes,
+      }));
+
+      let results: GiftSuggestion[] | null = null;
+
+      // ── Attempt 1: Server-side endpoint ──────────────────────────────────
+      try {
+        const response = await api.post<{ suggestions: GiftSuggestion[] }>('/api/ai/suggestions', {
+          personName: person.name,
+          relationship: person.relationship,
+          budget: Math.max(budget, 0),
+          notes: person.notes ?? null,
+          existingGifts: giftPayload,
+        });
+        results = response.suggestions;
+        setSourceLabel('server');
+      } catch (serverErr) {
+        const msg = serverErr instanceof Error ? serverErr.message : '';
+        // 503 = server AI not configured → try client config
+        // Any other error → re-throw
+        if (!msg.includes('503') && !msg.includes('Server AI not configured')) {
+          throw serverErr;
+        }
+      }
+
+      // ── Attempt 2: Client-side LLM config fallback ───────────────────────
+      if (!results) {
+        if (!activeConfig) {
+          throw new Error('No AI configured. Add an LLM provider in Settings or contact the admin to configure server-side AI.');
+        }
+        results = await llmService.getGiftSuggestions(
+          activeConfig,
+          person.name,
+          person.relationship,
+          Math.max(budget, 0),
+          existingGifts,
+          person.notes
+        );
+        setSourceLabel(activeConfig.name);
+      }
+
       setSuggestions(results);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to get suggestions');
@@ -55,7 +98,8 @@ export function AISuggestionsPanel({
     setAddedIds(prev => new Set(prev).add(index));
   };
 
-  if (!activeConfig) {
+  // Show "configure" message only when server isn't configured AND no client config
+  if (!activeConfig && suggestions.length === 0 && !loading) {
     return (
       <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-6">
         <div className="flex items-start justify-between">
@@ -63,16 +107,25 @@ export function AISuggestionsPanel({
             <Settings className="w-5 h-5 text-purple-600 dark:text-purple-400 mt-0.5" />
             <div>
               <h3 className="text-sm font-medium text-purple-900 dark:text-purple-200">
-                No LLM Provider Configured
+                AI Suggestions
               </h3>
               <p className="mt-1 text-sm text-purple-700 dark:text-purple-300">
-                To get AI-powered gift suggestions, add an LLM provider in Settings.
-                Supports Anthropic (Claude), OpenAI (GPT), or any custom/local LLM with an OpenAI-compatible API.
+                Click Generate to try the server AI. If that's not available, add an LLM provider in Settings
+                (supports Anthropic, OpenAI, or any OpenAI-compatible API).
               </p>
             </div>
           </div>
           <button onClick={onClose} className="text-purple-400 hover:text-purple-600 dark:hover:text-purple-200">
             <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="mt-4">
+          <button
+            onClick={handleGenerate}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700"
+          >
+            <Sparkles className="w-4 h-4" />
+            Generate Suggestions
           </button>
         </div>
       </div>
@@ -87,9 +140,16 @@ export function AISuggestionsPanel({
           <h3 className="text-sm font-medium text-purple-900 dark:text-purple-200">
             AI Gift Suggestions
           </h3>
-          <span className="text-xs text-purple-500 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/40 px-2 py-0.5 rounded-full">
-            {activeConfig.name}
-          </span>
+          {sourceLabel && (
+            <span className="text-xs text-purple-500 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/40 px-2 py-0.5 rounded-full">
+              {sourceLabel}
+            </span>
+          )}
+          {person.notes && (
+            <span className="text-xs text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
+              using notes
+            </span>
+          )}
         </div>
         <button onClick={onClose} className="text-purple-400 hover:text-purple-600 dark:hover:text-purple-200">
           <X className="w-4 h-4" />
@@ -99,7 +159,13 @@ export function AISuggestionsPanel({
       {suggestions.length === 0 && !loading && !error && (
         <div className="text-center py-4">
           <p className="text-sm text-purple-700 dark:text-purple-300 mb-3">
-            Get personalized gift suggestions for {person.name} based on their relationship and your budget.
+            Get personalized gift suggestions for {person.name}
+            {person.notes ? ' using their interests and gift history.' : ' based on their relationship and your budget.'}
+            {!person.notes && (
+              <span className="block mt-1 text-xs text-purple-500 dark:text-purple-400">
+                💡 Add notes about their interests for better suggestions
+              </span>
+            )}
           </p>
           <button
             onClick={handleGenerate}

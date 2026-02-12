@@ -85,7 +85,7 @@ function MainLayout({ onLogout }: { onLogout: () => void }) {
     }
   };
 
-  const handleAddPerson = async (person: { name: string; relationship: string; budget: number }) => {
+  const handleAddPerson = async (person: { name: string; relationship: string; budget: number; notes?: string }) => {
     try {
       await addPerson(person);
       setShowAddPersonModal(false);
@@ -309,9 +309,10 @@ function MainLayout({ onLogout }: { onLogout: () => void }) {
 
 export function App() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
-    // Check if we have a valid token
+    // Check if we have a valid token on mount
     const token = getToken();
     if (!token) {
       setAuthenticated(false);
@@ -323,13 +324,43 @@ export function App() {
       if (!valid) clearToken();
     });
 
-    // Listen for forced logouts (401 from API)
+    // Listen for forced logouts (401 from API) — show session expired banner
     const handleLogout = () => {
       setAuthenticated(false);
+      setSessionExpired(true);
     };
     window.addEventListener('auth:logout', handleLogout);
-    return () => window.removeEventListener('auth:logout', handleLogout);
+
+    // Revalidate token when user returns to the tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const currentToken = getToken();
+        if (!currentToken) {
+          setAuthenticated(false);
+          return;
+        }
+        authApi.verify().then(({ valid }) => {
+          if (!valid) {
+            clearToken();
+            setAuthenticated(false);
+            setSessionExpired(true);
+          }
+        });
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('auth:logout', handleLogout);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
+
+  // Handle auth success: set state first, navigation is driven by route render
+  const handleAuthSuccess = () => {
+    setSessionExpired(false);
+    setAuthenticated(true);
+  };
 
   if (authenticated === null) {
     return (
@@ -349,7 +380,28 @@ export function App() {
         <Route
           path="/auth"
           element={
-            <Auth onAuthSuccess={() => setAuthenticated(true)} />
+            authenticated ? (
+              <Navigate to="/" replace />
+            ) : (
+              <>
+                {sessionExpired && (
+                  <div className="fixed top-0 inset-x-0 z-50 flex items-center justify-center px-4 pt-4">
+                    <div className="max-w-md w-full rounded-xl border border-amber-300/70 bg-amber-50/90 px-4 py-3 shadow-lg backdrop-blur-sm dark:border-amber-700/50 dark:bg-amber-900/30 flex items-center justify-between gap-3">
+                      <p className="text-sm text-amber-800 dark:text-amber-200">
+                        Your session expired. Please sign in again.
+                      </p>
+                      <button
+                        onClick={() => setSessionExpired(false)}
+                        className="text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 text-xs shrink-0"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <Auth onAuthSuccess={handleAuthSuccess} />
+              </>
+            )
           }
         />
         <Route

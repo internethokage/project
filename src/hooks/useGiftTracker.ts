@@ -59,7 +59,7 @@ export function useGiftTracker() {
     }
   }, []);
 
-  const addPerson = useCallback(async (person: { name: string; relationship: string; budget: number }) => {
+  const addPerson = useCallback(async (person: { name: string; relationship: string; budget: number; notes?: string | null }) => {
     try {
       const newPerson = await giftService.addPerson(person);
       setPeople(prev => [...prev, newPerson]);
