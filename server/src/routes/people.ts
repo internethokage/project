@@ -1,14 +1,14 @@
-import { Router, Response } from 'express';
+import { RequestHandler, Router, Response } from 'express';
 import { query } from '../db.js';
 import { requireAuth, AuthRequest } from '../middleware/auth.js';
 import { getCached, setCache, invalidateCache } from '../redis.js';
 
 const router = Router();
-router.use(requireAuth as any);
+const requireAuthHandler = requireAuth as RequestHandler;
+router.use(requireAuthHandler);
 
 const CACHE_KEY = 'people';
 
-// GET /api/people
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
@@ -32,7 +32,6 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// POST /api/people
 router.post('/', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
@@ -56,7 +55,6 @@ router.post('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// DELETE /api/people/:id
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
@@ -73,7 +71,6 @@ router.delete('/:id', async (req: AuthRequest, res: Response) => {
     }
 
     await invalidateCache(userId, CACHE_KEY);
-    // Also invalidate gifts since cascade delete removes related gifts
     await invalidateCache(userId, 'gifts');
     res.json({ message: 'Deleted' });
   } catch (err) {

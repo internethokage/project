@@ -1,14 +1,14 @@
-import { Router, Response } from 'express';
+import { RequestHandler, Router, Response } from 'express';
 import { query } from '../db.js';
 import { requireAuth, AuthRequest } from '../middleware/auth.js';
 import { getCached, setCache, invalidateCache } from '../redis.js';
 
 const router = Router();
-router.use(requireAuth as any);
+const requireAuthHandler = requireAuth as RequestHandler;
+router.use(requireAuthHandler);
 
 const CACHE_KEY = 'gifts';
 
-// GET /api/gifts
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
@@ -32,7 +32,6 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// POST /api/gifts
 router.post('/', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
@@ -43,7 +42,6 @@ router.post('/', async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    // Verify the person belongs to this user
     const personCheck = await query(
       'SELECT id FROM people WHERE id = $1 AND user_id = $2',
       [person_id, userId]
@@ -68,7 +66,6 @@ router.post('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// PATCH /api/gifts/:id/status
 router.patch('/:id/status', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
@@ -81,7 +78,7 @@ router.patch('/:id/status', async (req: AuthRequest, res: Response) => {
     }
 
     let extraFields = '';
-    const params: any[] = [status, id, userId];
+    const params: [string, string, string] = [status, id, userId];
 
     if (status === 'purchased') {
       extraFields = ', date_purchased = NOW()';
@@ -107,7 +104,6 @@ router.patch('/:id/status', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// DELETE /api/gifts/:id
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;

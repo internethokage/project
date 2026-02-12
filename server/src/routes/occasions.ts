@@ -1,19 +1,18 @@
-import { Router, Response } from 'express';
+import { RequestHandler, Router, Response } from 'express';
 import { query } from '../db.js';
 import { requireAuth, AuthRequest } from '../middleware/auth.js';
 import { getCached, setCache, invalidateCache } from '../redis.js';
 
 const router = Router();
-router.use(requireAuth as any);
+const requireAuthHandler = requireAuth as RequestHandler;
+router.use(requireAuthHandler);
 
 const CACHE_KEY = 'occasions';
 
-// GET /api/occasions
 router.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
 
-    // Check cache
     const cached = await getCached(userId, CACHE_KEY);
     if (cached) {
       res.json(cached);
@@ -33,7 +32,6 @@ router.get('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// POST /api/occasions
 router.post('/', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;
@@ -57,7 +55,6 @@ router.post('/', async (req: AuthRequest, res: Response) => {
   }
 });
 
-// DELETE /api/occasions/:id
 router.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId!;

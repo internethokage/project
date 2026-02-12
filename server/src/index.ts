@@ -1,53 +1,15 @@
-import express from 'express';
-import cors from 'cors';
-import { query, testConnection } from './db.js';
 import { connectRedis } from './redis.js';
-import authRoutes from './routes/auth.js';
-import occasionsRoutes from './routes/occasions.js';
-import peopleRoutes from './routes/people.js';
-import giftsRoutes from './routes/gifts.js';
-import adminRoutes from './routes/admin.js';
+import { createApp } from './app.js';
+import { runMigrations, waitForDatabase } from './bootstrap.js';
 
-const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  credentials: true,
-}));
-app.use(express.json());
+export async function start(): Promise<void> {
+  const app = createApp();
 
-app.use('/api/auth', authRoutes);
-app.use('/api/occasions', occasionsRoutes);
-app.use('/api/people', peopleRoutes);
-app.use('/api/gifts', giftsRoutes);
-app.use('/api/admin', adminRoutes);
-
-app.get('/api/health', async (_req, res) => {
-  const dbOk = await testConnection();
-  res.json({
-    status: dbOk ? 'ok' : 'degraded',
-    db: dbOk ? 'connected' : 'disconnected',
-    timestamp: new Date().toISOString(),
-  });
-});
-
-async function runMigrations(): Promise<void> {
-  // Backfill schema changes for existing Docker volumes where init.sql is not re-run.
-  await query('ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE');
-}
-
-async function start() {
   await connectRedis();
 
-  let dbReady = false;
-  for (let i = 0; i < 30; i++) {
-    dbReady = await testConnection();
-    if (dbReady) break;
-    console.log(`Waiting for database... (attempt ${i + 1}/30)`);
-    await new Promise(r => setTimeout(r, 2000));
-  }
-
+  const dbReady = await waitForDatabase();
   if (!dbReady) {
     console.error('Could not connect to database after 30 attempts');
     process.exit(1);
@@ -61,7 +23,9 @@ async function start() {
   });
 }
 
-start().catch((err) => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
-});
+if (process.env.NODE_ENV !== 'test') {
+  start().catch((err) => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  });
+}

@@ -177,7 +177,7 @@ Keep prices within the budget. Be creative and thoughtful. Return ONLY the JSON 
       if (!jsonMatch) throw new Error('No JSON array found in response');
       const suggestions: GiftSuggestion[] = JSON.parse(jsonMatch[0]);
       return suggestions.filter(s => s.title && typeof s.estimatedPrice === 'number');
-    } catch (parseError) {
+    } catch {
       console.error('Failed to parse LLM response:', responseText);
       throw new Error('Failed to parse gift suggestions from AI response');
     }
