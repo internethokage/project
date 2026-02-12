@@ -18,8 +18,12 @@ export const giftService = {
     return api.get<Person[]>('/api/people');
   },
 
-  async addPerson(person: { name: string; relationship: string; budget: number }): Promise<Person> {
+  async addPerson(person: { name: string; relationship: string; budget: number; notes?: string | null }): Promise<Person> {
     return api.post<Person>('/api/people', person);
+  },
+
+  async updatePerson(personId: string, updates: { name?: string; relationship?: string; budget?: number; notes?: string | null }): Promise<Person> {
+    return api.patch<Person>(`/api/people/${personId}`, updates);
   },
 
   async deletePerson(personId: string): Promise<void> {

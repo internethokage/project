@@ -12,6 +12,7 @@ export interface Person {
   name: string;
   relationship: string;
   budget: number;
+  notes: string | null;
   user_id: string;
   created_at: string;
 }

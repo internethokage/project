@@ -6,6 +6,7 @@ import occasionsRoutes from './routes/occasions.js';
 import peopleRoutes from './routes/people.js';
 import giftsRoutes from './routes/gifts.js';
 import adminRoutes from './routes/admin.js';
+import aiRoutes from './routes/ai.js';
 
 export function createApp() {
   const app = express();
@@ -21,6 +22,7 @@ export function createApp() {
   app.use('/api/people', peopleRoutes);
   app.use('/api/gifts', giftsRoutes);
   app.use('/api/admin', adminRoutes);
+  app.use('/api/ai', aiRoutes);
 
   app.get('/api/health', async (_req, res) => {
     const dbOk = await testConnection();
