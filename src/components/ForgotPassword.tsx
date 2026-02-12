@@ -18,6 +18,8 @@ export function ForgotPassword() {
       const response = await api.post<{ message: string; previewResetUrl?: string; mailboxPreviewUrl?: string }>('/api/auth/forgot-password', { email });
       setPreviewResetUrl(response.previewResetUrl || null);
       setMailboxPreviewUrl(response.mailboxPreviewUrl || null);
+      const response = await api.post<{ message: string; previewResetUrl?: string }>('/api/auth/forgot-password', { email });
+      setPreviewResetUrl(response.previewResetUrl || null);
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

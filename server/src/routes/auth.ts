@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { query } from '../db.js';
 import { signToken, requireAuth, AuthRequest, verifyToken } from '../middleware/auth.js';
 import { setSession, deleteSession, getSession, isRedisAvailable } from '../redis.js';
+import { setSession, deleteSession, getSession } from '../redis.js';
 import { sendPasswordResetEmail } from '../email.js';
 import redis from '../redis.js';
 
@@ -50,6 +51,19 @@ async function consumeResetToken(token: string): Promise<string | null> {
   return record.userId;
 }
 
+async function shouldAssignAdmin(email: string): Promise<boolean> {
+  const configured = (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (configured.includes(email.toLowerCase())) return true;
+
+  const admins = await query('SELECT COUNT(*)::int AS count FROM users WHERE is_admin = true');
+  return admins.rows[0]?.count === 0;
+}
+
+// POST /api/auth/register
 router.post('/register', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
@@ -189,6 +203,9 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
     const appUrl = process.env.APP_URL || 'http://localhost';
     const previewResetUrl = `${appUrl}/reset-password?token=${resetToken}`;
     const mailboxPreviewUrl = process.env.MAILHOG_UI_URL || 'http://localhost:8025';
+    await redis.set(`reset:${resetToken}`, user.id, 'EX', 3600);
+
+    const previewResetUrl = `${process.env.APP_URL || 'http://localhost'}/reset-password?token=${resetToken}`;
 
     try {
       await sendPasswordResetEmail(user.email, resetToken);
@@ -223,6 +240,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
     }
 
     const userId = await consumeResetToken(token);
+    const userId = await redis.get(`reset:${token}`);
 
     if (!userId) {
       res.status(400).json({ error: 'Invalid or expired reset token' });
@@ -231,6 +249,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
 
     const passwordHash = await bcrypt.hash(password, 12);
     await query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, userId]);
+    await redis.del(`reset:${token}`);
 
     res.json({ message: 'Password has been reset successfully. You can now sign in.' });
   } catch (err) {
@@ -255,6 +274,10 @@ router.get('/verify', async (req: Request, res: Response) => {
         res.status(401).json({ valid: false });
         return;
       }
+    const session = await getSession(token);
+    if (session === 'revoked') {
+      res.status(401).json({ valid: false });
+      return;
     }
 
     const payload = verifyToken(token);
