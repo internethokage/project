@@ -8,12 +8,16 @@ export function ForgotPassword() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewResetUrl, setPreviewResetUrl] = useState<string | null>(null);
+  const [mailboxPreviewUrl, setMailboxPreviewUrl] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setLoading(true);
       setError(null);
+      const response = await api.post<{ message: string; previewResetUrl?: string; mailboxPreviewUrl?: string }>('/api/auth/forgot-password', { email });
+      setPreviewResetUrl(response.previewResetUrl || null);
+      setMailboxPreviewUrl(response.mailboxPreviewUrl || null);
       const response = await api.post<{ message: string; previewResetUrl?: string }>('/api/auth/forgot-password', { email });
       setPreviewResetUrl(response.previewResetUrl || null);
       setSubmitted(true);
@@ -37,6 +41,11 @@ export function ForgotPassword() {
             <div className="rounded-xl border border-emerald-300/70 bg-emerald-100/70 p-4 text-sm text-emerald-900">
               If an account with that email exists, a reset link has been sent.
             </div>
+            {mailboxPreviewUrl && (
+              <div className="rounded-xl border border-sky-200/70 bg-sky-100/70 p-3 text-xs text-sky-900 break-all">
+                Local Mailhog inbox: <a className="underline" href={mailboxPreviewUrl} target="_blank" rel="noreferrer">{mailboxPreviewUrl}</a>
+              </div>
+            )}
             {previewResetUrl && (
               <div className="rounded-xl border border-sky-200/70 bg-sky-100/70 p-3 text-xs text-sky-900 break-all">
                 Dev preview reset link: <a className="underline" href={previewResetUrl}>{previewResetUrl}</a>

@@ -3,11 +3,53 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { query } from '../db.js';
 import { signToken, requireAuth, AuthRequest, verifyToken } from '../middleware/auth.js';
+import { setSession, deleteSession, getSession, isRedisAvailable } from '../redis.js';
 import { setSession, deleteSession, getSession } from '../redis.js';
 import { sendPasswordResetEmail } from '../email.js';
 import redis from '../redis.js';
 
 const router = Router();
+const resetTokenFallback = new Map<string, { userId: string; expiresAt: number }>();
+
+async function shouldAssignAdmin(email: string): Promise<boolean> {
+  const configured = (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (configured.includes(email.toLowerCase())) return true;
+
+  const admins = await query('SELECT COUNT(*)::int AS count FROM users WHERE is_admin = true');
+  return admins.rows[0]?.count === 0;
+}
+
+async function storeResetToken(token: string, userId: string): Promise<void> {
+  const expirySeconds = 3600;
+  if (isRedisAvailable()) {
+    await redis.set(`reset:${token}`, userId, 'EX', expirySeconds);
+    return;
+  }
+  resetTokenFallback.set(token, { userId, expiresAt: Date.now() + expirySeconds * 1000 });
+}
+
+async function consumeResetToken(token: string): Promise<string | null> {
+  if (isRedisAvailable()) {
+    const userId = await redis.get(`reset:${token}`);
+    if (userId) {
+      await redis.del(`reset:${token}`);
+    }
+    return userId;
+  }
+
+  const record = resetTokenFallback.get(token);
+  if (!record) return null;
+  if (record.expiresAt < Date.now()) {
+    resetTokenFallback.delete(token);
+    return null;
+  }
+  resetTokenFallback.delete(token);
+  return record.userId;
+}
 
 async function shouldAssignAdmin(email: string): Promise<boolean> {
   const configured = (process.env.ADMIN_EMAILS || '')
@@ -64,7 +106,6 @@ router.post('/register', async (req: Request, res: Response) => {
   }
 });
 
-// POST /api/auth/login
 router.post('/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
@@ -157,6 +198,11 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
 
     const user = result.rows[0];
     const resetToken = crypto.randomBytes(32).toString('hex');
+    await storeResetToken(resetToken, user.id);
+
+    const appUrl = process.env.APP_URL || 'http://localhost';
+    const previewResetUrl = `${appUrl}/reset-password?token=${resetToken}`;
+    const mailboxPreviewUrl = process.env.MAILHOG_UI_URL || 'http://localhost:8025';
     await redis.set(`reset:${resetToken}`, user.id, 'EX', 3600);
 
     const previewResetUrl = `${process.env.APP_URL || 'http://localhost'}/reset-password?token=${resetToken}`;
@@ -171,6 +217,7 @@ router.post('/forgot-password', async (req: Request, res: Response) => {
     res.json({
       message: 'If an account with that email exists, a password reset link has been sent.',
       previewResetUrl: process.env.NODE_ENV === 'production' ? undefined : previewResetUrl,
+      mailboxPreviewUrl: process.env.NODE_ENV === 'production' ? undefined : mailboxPreviewUrl,
     });
   } catch (err) {
     console.error('Forgot password error:', err);
@@ -192,6 +239,7 @@ router.post('/reset-password', async (req: Request, res: Response) => {
       return;
     }
 
+    const userId = await consumeResetToken(token);
     const userId = await redis.get(`reset:${token}`);
 
     if (!userId) {
@@ -220,6 +268,12 @@ router.get('/verify', async (req: Request, res: Response) => {
   const token = header.slice(7);
 
   try {
+    if (isRedisAvailable()) {
+      const session = await getSession(token);
+      if (session === 'revoked') {
+        res.status(401).json({ valid: false });
+        return;
+      }
     const session = await getSession(token);
     if (session === 'revoked') {
       res.status(401).json({ valid: false });
