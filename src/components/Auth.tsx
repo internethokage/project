@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { authApi } from '../lib/api';
 
 interface AuthProps {
@@ -7,7 +7,6 @@ interface AuthProps {
 }
 
 export function Auth({ onAuthSuccess }: AuthProps) {
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,8 +25,13 @@ export function Auth({ onAuthSuccess }: AuthProps) {
         await authApi.login(email, password);
       }
 
+      /**
+       * Call onAuthSuccess to update `authenticated` state in App.tsx.
+       * The route guard (<Route path="/auth">) will then render <Navigate to="/" />
+       * automatically — no need to call navigate() here, which could fire
+       * before the React state update is committed (race condition).
+       */
       onAuthSuccess?.();
-      navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
