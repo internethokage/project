@@ -34,9 +34,13 @@ CREATE TABLE IF NOT EXISTS people (
     name TEXT NOT NULL,
     relationship TEXT NOT NULL,
     budget NUMERIC(10,2) NOT NULL DEFAULT 0,
+    notes TEXT,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migrate existing installs (idempotent)
+ALTER TABLE people ADD COLUMN IF NOT EXISTS notes TEXT;
 
 CREATE INDEX idx_people_user ON people(user_id);
 

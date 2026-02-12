@@ -1,4 +1,4 @@
-import type { LLMConfig, LLMMessage, GiftSuggestion } from '../types';
+import type { LLMConfig, LLMMessage, GiftSuggestion, Gift } from '../types';
 
 const STORAGE_KEY = 'giftable-llm-configs';
 
@@ -106,7 +106,6 @@ export const llmService = {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
         };
-        // OpenAI-compatible format (most local LLMs use this)
         body = {
           model: model || 'default',
           messages: messages.map(m => ({
@@ -139,40 +138,70 @@ export const llmService = {
     return data.choices?.[0]?.message?.content ?? '';
   },
 
+  /**
+   * Get gift suggestions using full context:
+   * - Person notes (interests, preferences)
+   * - Full gift history (title, price, status, notes)
+   * - Budget remaining
+   */
   async getGiftSuggestions(
     config: LLMConfig,
     personName: string,
     relationship: string,
     budget: number,
-    existingGifts: string[]
+    existingGifts: Gift[],
+    personNotes?: string | null
   ): Promise<GiftSuggestion[]> {
-    const existingGiftsText = existingGifts.length > 0
-      ? `They already have these gift ideas: ${existingGifts.join(', ')}.`
-      : 'No gift ideas yet.';
+    // Build rich gift history text
+    const giftHistoryText = existingGifts.length > 0
+      ? existingGifts.map(g => {
+          const parts = [`- ${g.title}`];
+          if (g.price) parts.push(`($${g.price})`);
+          if (g.status) parts.push(`[${g.status}]`);
+          if (g.notes) parts.push(`— note: ${g.notes}`);
+          return parts.join(' ');
+        }).join('\n')
+      : 'None yet.';
+
+    const budgetSpent = existingGifts
+      .filter(g => g.status === 'purchased' || g.status === 'given')
+      .reduce((sum, g) => sum + (g.price || 0), 0);
+
+    const personContext = personNotes ? `\nAbout them: ${personNotes}` : '';
 
     const messages: LLMMessage[] = [
       {
         role: 'system',
-        content: `You are a helpful gift suggestion assistant for an app called Giftable. You suggest thoughtful, creative gift ideas. Always respond with valid JSON only, no markdown formatting.`,
+        content: `You are a thoughtful gift suggestion assistant for an app called Giftable. You suggest creative, personalized gift ideas. Always respond with valid JSON only, no markdown formatting.`,
       },
       {
         role: 'user',
-        content: `Suggest 4 gift ideas for ${personName} (my ${relationship}). Budget remaining: $${budget}. ${existingGiftsText}
+        content: `Suggest 4 gift ideas for ${personName} (my ${relationship}).${personContext}
 
-Respond with a JSON array of objects with these fields:
+Budget remaining: $${budget}${budgetSpent > 0 ? ` (already spent $${budgetSpent})` : ''}
+
+Their gift history:
+${giftHistoryText}
+
+Guidelines:
+- Don't repeat gifts they already have
+- Use their notes and history to make truly personalized suggestions
+- Keep prices within the budget
+- Be creative and specific — avoid generic gifts
+
+Respond with a JSON array only. Each item must have:
 - title: gift name (string)
 - description: brief description (string)
-- estimatedPrice: estimated cost in dollars (number)
-- reason: why this is a good gift for them (string)
+- estimatedPrice: cost in dollars (number)
+- reason: why this fits them specifically (string)
 
-Keep prices within the budget. Be creative and thoughtful. Return ONLY the JSON array, no other text.`,
+Return ONLY the JSON array, no other text.`,
       },
     ];
 
     const responseText = await this.sendMessage(config, messages);
 
     try {
-      // Try to extract JSON from the response
       const jsonMatch = responseText.match(/\[[\s\S]*\]/);
       if (!jsonMatch) throw new Error('No JSON array found in response');
       const suggestions: GiftSuggestion[] = JSON.parse(jsonMatch[0]);
