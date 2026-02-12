@@ -7,7 +7,6 @@ import {
   setSession,
   deleteSession,
   getSession,
-  isRedisAvailable,
   setResetToken,
   consumeResetToken,
 } from '../redis.js';
@@ -245,22 +244,23 @@ router.get('/verify', async (req: Request, res: Response) => {
   }
 
   try {
-    const session = await getSession(token);
-    if (session === 'revoked') {
-      res.status(401).json({ valid: false });
-      return;
-    }
-
+    // JWT is the source of truth — verify signature & expiry first
     const payload = verifyToken(token);
 
-    if (session && session !== payload.userId) {
-      res.status(401).json({ valid: false });
-      return;
-    }
-
-    if (isRedisAvailable() && !session) {
-      res.status(401).json({ valid: false });
-      return;
+    // Check Redis blacklist only (non-fatal if Redis unavailable)
+    try {
+      const session = await getSession(token);
+      if (session === 'revoked') {
+        res.status(401).json({ valid: false, reason: 'revoked' });
+        return;
+      }
+      if (session && session !== payload.userId) {
+        res.status(401).json({ valid: false, reason: 'invalid_session' });
+        return;
+      }
+      // session not found in Redis → JWT is still valid, allow through
+    } catch {
+      // Redis unavailable — JWT is sufficient
     }
 
     res.json({ valid: true, user: { id: payload.userId, email: payload.email, isAdmin: payload.isAdmin } });
