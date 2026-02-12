@@ -3,13 +3,14 @@ import { X } from 'lucide-react';
 
 interface AddPersonModalProps {
   onClose: () => void;
-  onAdd: (person: { name: string; relationship: string; budget: number }) => void;
+  onAdd: (person: { name: string; relationship: string; budget: number; notes?: string }) => void;
 }
 
 export function AddPersonModal({ onClose, onAdd }: AddPersonModalProps) {
   const [name, setName] = useState('');
   const [relationship, setRelationship] = useState('');
   const [budget, setBudget] = useState('');
+  const [notes, setNotes] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,6 +18,7 @@ export function AddPersonModal({ onClose, onAdd }: AddPersonModalProps) {
       name,
       relationship,
       budget: Number(budget),
+      notes: notes.trim() || undefined,
     });
     onClose();
   };
@@ -53,6 +55,7 @@ export function AddPersonModal({ onClose, onAdd }: AddPersonModalProps) {
                 value={relationship}
                 onChange={(e) => setRelationship(e.target.value)}
                 className="aero-input mt-1"
+                placeholder="e.g. mom, best friend, coworker"
                 required
               />
             </div>
@@ -68,6 +71,18 @@ export function AddPersonModal({ onClose, onAdd }: AddPersonModalProps) {
                 required
                 min="0"
                 step="0.01"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Notes <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="aero-input mt-1 resize-none"
+                rows={3}
+                placeholder="Interests, hobbies, preferences — helps the AI make better suggestions"
               />
             </div>
           </div>
