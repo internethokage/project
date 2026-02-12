@@ -33,15 +33,24 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
   const token = header.slice(7);
 
   try {
-    if (isRedisAvailable()) {
-      const session = await getSession(token);
-      if (session === 'revoked') {
-        res.status(401).json({ error: 'Session expired' });
-        return;
-      }
+    const session = await getSession(token);
+    if (session === 'revoked') {
+      res.status(401).json({ error: 'Session expired' });
+      return;
     }
 
     const payload = verifyToken(token);
+
+    if (session && session !== payload.userId) {
+      res.status(401).json({ error: 'Invalid session' });
+      return;
+    }
+
+    if (isRedisAvailable() && !session) {
+      res.status(401).json({ error: 'Session expired' });
+      return;
+    }
+
     req.userId = payload.userId;
     req.isAdmin = Boolean(payload.isAdmin);
     next();

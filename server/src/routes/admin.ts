@@ -1,22 +1,43 @@
-import { Router, Response } from 'express';
+import { RequestHandler, Router, Response } from 'express';
 import crypto from 'crypto';
 import { query } from '../db.js';
 import { AuthRequest, requireAdmin, requireAuth } from '../middleware/auth.js';
-import redis from '../redis.js';
+import { setResetToken } from '../redis.js';
 
 const router = Router();
+const requireAuthHandler = requireAuth as RequestHandler;
+const requireAdminHandler = requireAdmin as RequestHandler;
 
-router.use(requireAuth as any, requireAdmin as any);
+router.use(requireAuthHandler, requireAdminHandler);
 
 router.get('/users', async (_req: AuthRequest, res: Response) => {
   try {
     const users = await query(
-      `SELECT id, email, is_admin, created_at,
-        (SELECT COUNT(*)::int FROM occasions WHERE user_id = users.id) AS occasion_count,
-        (SELECT COUNT(*)::int FROM people WHERE user_id = users.id) AS people_count,
-        (SELECT COUNT(*)::int FROM gifts WHERE user_id = users.id) AS gift_count
-      FROM users
-      ORDER BY created_at DESC`
+      `SELECT
+        u.id,
+        u.email,
+        u.is_admin,
+        u.created_at,
+        COALESCE(o.occasion_count, 0) AS occasion_count,
+        COALESCE(p.people_count, 0) AS people_count,
+        COALESCE(g.gift_count, 0) AS gift_count
+      FROM users u
+      LEFT JOIN (
+        SELECT user_id, COUNT(*)::int AS occasion_count
+        FROM occasions
+        GROUP BY user_id
+      ) o ON o.user_id = u.id
+      LEFT JOIN (
+        SELECT user_id, COUNT(*)::int AS people_count
+        FROM people
+        GROUP BY user_id
+      ) p ON p.user_id = u.id
+      LEFT JOIN (
+        SELECT user_id, COUNT(*)::int AS gift_count
+        FROM gifts
+        GROUP BY user_id
+      ) g ON g.user_id = u.id
+      ORDER BY u.created_at DESC`
     );
 
     res.json({ users: users.rows });
@@ -98,7 +119,7 @@ router.post('/users/:id/reset-link', async (req: AuthRequest, res: Response) => 
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
-    await redis.set(`reset:${resetToken}`, id, 'EX', 3600);
+    await setResetToken(resetToken, id, 3600);
     const resetUrl = `${process.env.APP_URL || 'http://localhost'}/reset-password?token=${resetToken}`;
 
     res.json({ resetUrl });
