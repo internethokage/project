@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Gift, User, Settings, LogOut, Menu, Users } from 'lucide-react';
 import { OccasionCard } from './components/OccasionCard';
 import { PersonCard } from './components/PersonCard';
@@ -85,7 +85,7 @@ function MainLayout({ onLogout }: { onLogout: () => void }) {
     }
   };
 
-  const handleAddPerson = async (person: { name: string; relationship: string; budget: number }) => {
+  const handleAddPerson = async (person: { name: string; relationship: string; budget: number; notes?: string }) => {
     try {
       await addPerson(person);
       setShowAddPersonModal(false);
@@ -309,9 +309,27 @@ function MainLayout({ onLogout }: { onLogout: () => void }) {
 
 export function App() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  // Revalidate token when user returns to the tab (e.g. long idle, background tab)
+  const revalidateOnFocus = useCallback(async () => {
+    if (document.visibilityState !== 'visible') return;
+    const token = getToken();
+    if (!token) return;
+    try {
+      const { valid } = await authApi.verify();
+      if (!valid) {
+        clearToken();
+        setAuthenticated(false);
+        setSessionExpired(true);
+      }
+    } catch {
+      // Network error — don't log out, assume still valid
+    }
+  }, []);
 
   useEffect(() => {
-    // Check if we have a valid token
+    // Check if we have a valid token on mount
     const token = getToken();
     if (!token) {
       setAuthenticated(false);
@@ -323,13 +341,21 @@ export function App() {
       if (!valid) clearToken();
     });
 
-    // Listen for forced logouts (401 from API)
-    const handleLogout = () => {
+    // Listen for forced logouts (401 from API — silent background redirect)
+    const handleForcedLogout = () => {
       setAuthenticated(false);
+      setSessionExpired(true);
     };
-    window.addEventListener('auth:logout', handleLogout);
-    return () => window.removeEventListener('auth:logout', handleLogout);
-  }, []);
+    window.addEventListener('auth:logout', handleForcedLogout);
+
+    // Revalidate token when user switches back to this tab
+    document.addEventListener('visibilitychange', revalidateOnFocus);
+
+    return () => {
+      window.removeEventListener('auth:logout', handleForcedLogout);
+      document.removeEventListener('visibilitychange', revalidateOnFocus);
+    };
+  }, [revalidateOnFocus]);
 
   if (authenticated === null) {
     return (
@@ -349,14 +375,22 @@ export function App() {
         <Route
           path="/auth"
           element={
-            <Auth onAuthSuccess={() => setAuthenticated(true)} />
+            authenticated
+              ? <Navigate to="/" replace />
+              : <Auth
+                  onAuthSuccess={() => setAuthenticated(true)}
+                  sessionExpired={sessionExpired}
+                />
           }
         />
         <Route
           path="/*"
           element={
             authenticated ? (
-              <MainLayout onLogout={() => setAuthenticated(false)} />
+              <MainLayout onLogout={() => {
+                setAuthenticated(false);
+                setSessionExpired(false);
+              }} />
             ) : (
               <Navigate to="/auth" replace />
             )

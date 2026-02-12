@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { flushSync } from 'react-dom';
 import { authApi } from '../lib/api';
 
 interface AuthProps {
   onAuthSuccess?: () => void;
+  sessionExpired?: boolean;
 }
 
-export function Auth({ onAuthSuccess }: AuthProps) {
+export function Auth({ onAuthSuccess, sessionExpired }: AuthProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
@@ -26,7 +28,12 @@ export function Auth({ onAuthSuccess }: AuthProps) {
         await authApi.login(email, password);
       }
 
-      onAuthSuccess?.();
+      // Use flushSync to ensure authenticated state is committed before navigation.
+      // Without this, React batches the setState and navigate('/') races ahead of
+      // the re-render, causing a brief redirect back to /auth.
+      flushSync(() => {
+        onAuthSuccess?.();
+      });
       navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -56,8 +63,19 @@ export function Auth({ onAuthSuccess }: AuthProps) {
           </p>
         </div>
 
+        {/* Session expired banner */}
+        {sessionExpired && (
+          <div className="rounded-xl border border-amber-300/70 bg-amber-50/80 px-4 py-3 text-sm text-amber-800 dark:border-amber-600/50 dark:bg-amber-900/30 dark:text-amber-200">
+            Your session has expired. Please sign in again.
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && <div className="rounded-xl border border-red-300/70 bg-red-100/70 px-3 py-2 text-sm text-red-700">{error}</div>}
+          {error && (
+            <div className="rounded-xl border border-red-300/70 bg-red-100/70 px-3 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          )}
 
           <div>
             <label htmlFor="email" className="mb-1 block text-sm font-medium text-sky-900 dark:text-sky-100">
